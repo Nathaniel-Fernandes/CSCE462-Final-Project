@@ -1,11 +1,17 @@
+import os
 import time
+import binascii
+from dotenv import load_dotenv
 # import RPi.GPIO as GPIO
 import j421xlib
+from supabase import create_client, Client
+import pprint
+import json
 
 # GPIO.setmode(GPIO.BOARD)
 # GPIO.setwarnings(False)
 
-def Test():
+def SetupReader():
     # load the library
     f = j421xlib.J4210()
     ver = f.LibVersion()
@@ -24,19 +30,13 @@ def Test():
     # change power
     # print("Saving modified settings:")
     try:
-        reader_info.Power = 19
+        reader_info.Power = 26
         f.SaveSettings(reader_info)
         f.LoadSettings().echo()
     except:
         print("Could not save reader settings")
 
-    # Perform inventory scan
-    while True:
-        f.SetQ(5) # Q is 0 to 15 
-        n = f.Inventory(False)
-
-        print("Tags found: ", n)
-        time.sleep(5)
+    return f
 
     # # list inventory
     # print("Tag List:")
@@ -145,15 +145,83 @@ def Test():
 
 
     # close connection
-    f.ClosePort()
+    # f.ClosePort()
 
-    print("DONE!")
+    # print("DONE!")
 
-Test()
+# Test()
 
 def main():
-    pass
+    load_dotenv()
+    url: str = os.environ.get("SUPABASE_URL")
+    key: str = os.environ.get("SUPABASE_KEY")
+    # SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY")
+    supabase: Client = create_client(url, key)
 
-# if ( __name__ == "__main__"):
-#     main()
-#     GPIO.cleanup()
+    # reader = SetupReader()
+    
+    try:
+        while True:
+            response = input("Waiting for input. Please press enter what you want to do: SCAN, DRAWOPEN, DRAWCLOSE, CLOSE:")
+
+            if response == "SCAN":
+                print("result 1: ", reader.SetQ(5))
+                print("result 2: ", reader.SetQ1(5))
+                n = reader.Inventory(False)    # Perform inventory scan
+
+                print("Tags found: ", n)
+                tags = list()
+
+                for i in range(n):
+                    tag = reader.GetResult(i)
+                    # tag.line()
+
+                    data = {
+                        "EPC": binascii.hexlify(tag.EPC).decode('utf-8').upper(),
+                        "RSSI": tag.RSSI,
+                        "COUNT": tag.Count
+                    }
+
+                    tags.append(data)
+                # print(tags)
+
+                if len(tags) > 0:
+                    res = supabase.table('events').insert({
+                        "event": "scan_result",
+                        "cabinet_id": 1,
+                        "scan_result": json.dumps(tags)
+                    }).execute()
+
+                    print(res)
+                
+                else:
+                    print("nothing to insert")
+            
+            elif response == "DRAWOPEN":
+                res = supabase.table('events').insert({
+                    "event": "drawer_open",
+                    "cabinet_id": 1
+                }).execute()
+
+                print("draw open?", res)
+
+            elif response == "DRAWCLOSE":
+                res = supabase.table('events').insert({
+                    "event": "drawer_close",
+                    "cabinet_id": 1
+                }).execute()
+
+                print("draw closed?", res)
+
+            elif response == "CLOSE":
+                # reader.ClosePort()
+                break;
+
+    except Exception as e:
+        # reader.ClosePort()
+        print("exception thrown", e.message)
+
+
+if ( __name__ == "__main__"):
+    main()
+    # GPIO.cleanup()
