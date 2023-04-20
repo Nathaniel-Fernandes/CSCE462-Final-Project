@@ -1,0 +1,2 @@
+global reader
+global db
