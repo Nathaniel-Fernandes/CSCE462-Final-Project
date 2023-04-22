@@ -2,6 +2,7 @@ import time
 from enum import Enum
 import helpers
 import globals as gb
+import GPIO as gpio
 
 #####################################
 ##########    FSM HELPERS    ########
@@ -9,9 +10,6 @@ import globals as gb
 
 # limit scans to once per door being closed (not continuously scanning)
 has_scanned = False
-who_unlocked_the_door = ''
-is_drawer_locked = True
-time_of_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 CONDITIONS = Enum("CONDITIONS", ["immediate", "wait_for_door_to_open", "wait_for_door_to_close"])
 STATES = Enum("STATES", ["reset", "drawer_closed", "drawer_open", "drawer_unlocked", "scanning"])
@@ -113,23 +111,10 @@ def execute(instruction: str, execution_context: str|None):
     print("[EXEC] ", instruction, execution_context)
 
     global has_scanned
-    global time_of_unlock
-    global is_drawer_locked
-    global who_unlocked_the_door
-
-
-    # try to lock door after 60 sec as security measure
-    # can present problems if drops the needle
-    if time.time() > time_of_unlock + 60:
-        # TODO: lock door function
-        is_drawer_locked = True
-        print("drawer locked!")
 
     if instruction == INSTRUCTIONS.reset_values:
         try:
             has_scanned = False
-            is_drawer_locked = True
-            time_of_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
             print("Reader: ", gb.reader, id(gb.reader))
 
@@ -153,16 +138,14 @@ def execute(instruction: str, execution_context: str|None):
 
     elif instruction == INSTRUCTIONS.check_if_door_is_closed:
         # if true, the door started OPEN not closed
-        # if (GPIO.input(setup.BUTTON)): # TODO: fix
-        # use "isCondition" here
-        if (bool(input("Enter if door is open: (hit enter for door closed)"))):
+        # if (bool(input("Enter if door is open: (hit enter for door closed)"))):
+        if gpio.IsDoorOpen():
             return STATES.drawer_open, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 0
         
         return None, None, None, 0
     
     elif instruction == INSTRUCTIONS.lock_door:
-        is_drawer_locked = True
-        print("drawer locked!")
+        gpio.LockDoor()
         return None, None, None, 0
     
     elif instruction == INSTRUCTIONS.send_drawer_opened_status_event:
@@ -171,9 +154,10 @@ def execute(instruction: str, execution_context: str|None):
                 # reset scan value once the door has been opened
                 has_scanned = False
 
+                # TODO: could extract this if wanted
                 res = gb.db.table('events').insert({
                     "event": "drawer_open",
-                    "cabinet_id": 1
+                    "cabinet_id": 1,
                 }).execute()
 
                 print("draw open?", res)
@@ -190,7 +174,6 @@ def execute(instruction: str, execution_context: str|None):
                 res = gb.db.table('events').insert({
                     "event": "drawer_close",
                     "cabinet_id": 1,
-                    # "user" # TODO: implement authentication - who opened, when, what did they take out?
                 }).execute()
                 print("drawer close?", res)
 
@@ -220,7 +203,7 @@ def execute(instruction: str, execution_context: str|None):
         return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 3
     
     elif instruction == INSTRUCTIONS.check_for_authorized_access_card:
-        while True and is_drawer_locked:
+        while True and gpio.IsDoorLocked():
             print("Waiting for authorized personnel to badge in")
 
             # checks every 2 sec to prevent burning up CPU
@@ -238,16 +221,14 @@ def execute(instruction: str, execution_context: str|None):
 
                 print("detected epcs: detected matches:", detected_epcs, matches, gb.authorized_personnel)
                 if (len(matches) > 0):
-                    who_unlocked_the_door = list(matches)[0]
-                    print("authorized user: ", who_unlocked_the_door)
+                    gpio.who_unlocked_the_door = list(matches)[0]
+                    print("authorized user: ", gpio.who_unlocked_the_door)
                     break
 
         return STATES.drawer_unlocked, CONDITIONS.immediate, None, 0
 
     elif instruction == INSTRUCTIONS.unlock_door:
-        # TODO: write a custom helper function, callable from anywhere
-        is_drawer_locked = False
-        time_of_unlock = time.time()
+        gpio.UnlockDoor()
 
         return None, None, None, 0
 
@@ -258,7 +239,7 @@ def execute(instruction: str, execution_context: str|None):
                 res = gb.db.table('events').insert({
                     "event": "drawer_unlocked",
                     "cabinet_id": 1,
-                    "user": who_unlocked_the_door # TODO: implement authentication - who opened, when, what did they take out?
+                    "user": gpio.who_unlocked_the_door
                 }).execute()
                 print("drawer unlock msg sent?", res)
 
@@ -279,44 +260,7 @@ def isConditionMet(condition):
         return True
     
     elif condition == CONDITIONS.wait_for_door_to_open:
-        # TODO: modify interrupt code here
-        # need 10 door open events to confirm the door has ACTUALLY been open (and not just circuit accidentally jostling around and breaking)
-
-        times_detected_true = 0
-        while times_detected_true <= 10:
-            if input("is the door open? (type yes)"):
-                times_detected_true += 1
-                time.sleep(0.2)
-            else:
-                times_detected_true = 0
-
-        return True
+        return gpio.WaitForDoorToOpen()
 
     elif condition == CONDITIONS.wait_for_door_to_close:
-        # TODO: modify interrupt code here
-
-        times_detected_true = 0
-        while times_detected_true <= 10:
-            if input("is the door currently closed? (type yes)"):
-                times_detected_true += 1
-                time.sleep(0.2)
-            else:
-                times_detected_true = 0
-
-        return True
-    
-
-    # if condition == "countdown":
-    #     while updateCounter() > conditionParams:
-    #         if conditionParams == 0: # hard coded, checks if we're doing state4
-    #             blink(setup.PED_BLUE, 1, 0.4, 0.4)
-    #         time.sleep(0.2)
-    #     return True
-    
-    # if condition == "button_press":
-    #     interrupt()
-        
-    #     setup.COOLDOWN = time.time()
-    #     setup.COUNTDOWN_START_TIME = time.time()
-
-    #     return True
+        return gpio.WaitForDoorToClose()

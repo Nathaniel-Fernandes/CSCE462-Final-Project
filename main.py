@@ -1,10 +1,6 @@
 import FiniteStateMachine as FSM
 import globals as gb
 
-# import RPi.GPIO as GPIO
-# GPIO.setmode(GPIO.BOARD)
-# GPIO.setwarnings(False)
-
 def main():   
     # begin Finite State Machine
     try:
