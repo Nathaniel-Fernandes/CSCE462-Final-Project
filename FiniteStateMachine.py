@@ -136,8 +136,6 @@ def execute(instruction: str, execution_context: str|None):
 
         try:
             if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
-                print("gb db: ", id(gb.db))
-
                 res = gb.db.table('events').insert({
                     "event": "drawer_close",
                     "cabinet_id": 1,
@@ -177,8 +175,6 @@ def execute(instruction: str, execution_context: str|None):
             try:
                 # reset scan value once the door has been opened
                 has_scanned = False
-
-                print("gb db: ", id(gb.db))
 
                 res = gb.db.table('events').insert({
                     "event": "drawer_open",

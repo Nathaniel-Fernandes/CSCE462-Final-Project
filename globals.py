@@ -3,12 +3,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client 
 
 # one instance, used everywhere
-# TODO: do I even need the keyword global?
-# global reader
-# global db
-
 reader = None
-print("id of reader: ", id(reader))
 db = None
 
 # open connection to database
