@@ -9,6 +9,8 @@ import globals as gb
 
 # limit scans to once per door being closed (not continuously scanning)
 has_scanned = False
+who_unlocked_the_door = ''
+is_drawer_locked = True
 time_of_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 CONDITIONS = Enum("CONDITIONS", ["immediate", "wait_for_door_to_open", "wait_for_door_to_close"])
@@ -19,7 +21,7 @@ INSTRUCTIONS = Enum("INSTRUCTIONS", [
     "check_if_door_is_closed", 
     "send_drawer_closed_status_event", "send_drawer_opened_status_event",
     "check_if_scanned", "run_scan",
-    "unlock_door", "send_drawer_unlocked_status_event", "lock_door",  # new
+    "check_for_authorized_access_card", "unlock_door", "send_drawer_unlocked_status_event", "lock_door",  # new
 ])
 
 CABINET_STATE = {
@@ -35,6 +37,7 @@ CABINET_STATE = {
     STATES.drawer_closed: {
         "instructions": [
             INSTRUCTIONS.check_if_door_is_closed,
+            INSTRUCTIONS.lock_door,
             INSTRUCTIONS.send_drawer_closed_status_event,
             INSTRUCTIONS.check_if_scanned,
             INSTRUCTIONS.check_for_authorized_access_card
@@ -84,7 +87,7 @@ def FSM(state: str, execution_context=None, instruction_start_idx=0):
     next_execution_context: EXECUTION_CONTEXT|None
 
     # A. execute this state's instructions, optionally skipping some instructions
-    for i in range(instruction_start_idx[0], len(curr_state["instructions"])):
+    for i in range(instruction_start_idx, len(curr_state["instructions"])):
         instruction = curr_state["instructions"][i]
 
         next_state, condition, next_execution_context, next_instruction_start_index = execute(instruction, execution_context)
@@ -110,15 +113,23 @@ def execute(instruction: str, execution_context: str|None):
     print("[EXEC] ", instruction, execution_context)
 
     global has_scanned
+    global time_of_unlock
+    global is_drawer_locked
+    global who_unlocked_the_door
 
-    # try to lock door as security measure
+
+    # try to lock door after 60 sec as security measure
+    # can present problems if drops the needle
     if time.time() > time_of_unlock + 60:
         # TODO: lock door function
-        pass
+        is_drawer_locked = True
+        print("drawer locked!")
 
     if instruction == INSTRUCTIONS.reset_values:
         try:
             has_scanned = False
+            is_drawer_locked = True
+            time_of_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
             print("Reader: ", gb.reader, id(gb.reader))
 
@@ -138,20 +149,44 @@ def execute(instruction: str, execution_context: str|None):
         except BaseException as e:
             print("could not connect to reader", str(e))
 
-        return STATES.drawer_closed, CONDITIONS.immediate, None, 0
+        return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 0
 
     elif instruction == INSTRUCTIONS.check_if_door_is_closed:
         # if true, the door started OPEN not closed
         # if (GPIO.input(setup.BUTTON)): # TODO: fix
         # use "isCondition" here
         if (bool(input("Enter if door is open: (hit enter for door closed)"))):
-            return STATES.drawer_open, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages
+            return STATES.drawer_open, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 0
         
         return None, None, None, 0
+    
+    elif instruction == INSTRUCTIONS.lock_door:
+        is_drawer_locked = True
+        print("drawer locked!")
+        return None, None, None, 0
+    
+    elif instruction == INSTRUCTIONS.send_drawer_opened_status_event:
+        if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
+            try:
+                # reset scan value once the door has been opened
+                has_scanned = False
+
+                res = gb.db.table('events').insert({
+                    "event": "drawer_open",
+                    "cabinet_id": 1
+                }).execute()
+
+                print("draw open?", res)
+
+            except BaseException as e:
+                print("Couldn't send drawer open status event", str(e))
+        
+        return STATES.drawer_closed, CONDITIONS.wait_for_door_to_close, None, 0
 
     elif instruction == INSTRUCTIONS.send_drawer_closed_status_event:
         try:
             if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
+                # TODO: might be extracted to helper function
                 res = gb.db.table('events').insert({
                     "event": "drawer_close",
                     "cabinet_id": 1,
@@ -178,48 +213,61 @@ def execute(instruction: str, execution_context: str|None):
 
             # the reader could not find any tags. restart FSM.
             if status_code == 0:
-                return STATES.reset, CONDITIONS.immediate, None
+                return STATES.reset, CONDITIONS.immediate, None, 0
         
             has_scanned=True
 
         return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 3
     
-    elif instruction == INSTRUCTIONS.send_drawer_opened_status_event:
-        if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
-            try:
-                # reset scan value once the door has been opened
-                has_scanned = False
-
-                res = gb.db.table('events').insert({
-                    "event": "drawer_open",
-                    "cabinet_id": 1
-                }).execute()
-
-                print("draw open?", res)
-
-            except BaseException as e:
-                print("Couldn't send drawer open status event", str(e))
-        
-        return STATES.drawer_closed, CONDITIONS.wait_for_door_to_close, None
-    
     elif instruction == INSTRUCTIONS.check_for_authorized_access_card:
-        while True:
-            status_code, tags = helpers.RunScan(0)
+        while True and is_drawer_locked:
+            print("Waiting for authorized personnel to badge in")
+
+            # checks every 2 sec to prevent burning up CPU
+            time.sleep(2)
+
+            status_code, tags = helpers.RunScan(0, False)
 
             # the reader could not find any tags. restart FSM.
             if status_code == 0:
-                return STATES.reset, CONDITIONS.immediate, None
+                return STATES.reset, CONDITIONS.immediate, None, 0
         
             else:
-                detected_epcs = map(lambda x: x["EPC"], tags)
-                if (any(epc in gb.authorized_personnel for epc in detected_epcs)):
+                detected_epcs = list(map(lambda x: x["EPC"], tags))
+                matches = set(gb.authorized_personnel).intersection(set(detected_epcs))
+
+                print("detected epcs: detected matches:", detected_epcs, matches, gb.authorized_personnel)
+                if (len(matches) > 0):
+                    who_unlocked_the_door = list(matches)[0]
+                    print("authorized user: ", who_unlocked_the_door)
                     break
-                
-                print("Waiting for authorized personnel to badge in")
-                time.sleep(2)
-                
+
         return STATES.drawer_unlocked, CONDITIONS.immediate, None, 0
 
+    elif instruction == INSTRUCTIONS.unlock_door:
+        # TODO: write a custom helper function, callable from anywhere
+        is_drawer_locked = False
+        time_of_unlock = time.time()
+
+        return None, None, None, 0
+
+    elif instruction == INSTRUCTIONS.send_drawer_unlocked_status_event:
+        try:
+            if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
+                # TODO: might be extracted to helper function
+                res = gb.db.table('events').insert({
+                    "event": "drawer_unlocked",
+                    "cabinet_id": 1,
+                    "user": who_unlocked_the_door # TODO: implement authentication - who opened, when, what did they take out?
+                }).execute()
+                print("drawer unlock msg sent?", res)
+
+        except:
+            print("Couldn't send drawer open message")
+
+        finally:
+            return STATES.drawer_open, CONDITIONS.wait_for_door_to_open, None, 0
+        
     else:
         print("did not match any instructions!!!: ", instruction, execution_context)
         # TODO: this will throw an error, determine best course of action - maybe go to reset?
@@ -254,12 +302,6 @@ def isConditionMet(condition):
                 time.sleep(0.2)
             else:
                 times_detected_true = 0
-
-        return True
-    
-    elif condition == CONDITIONS.is_authorized_access_card_in_range:
-
-        
 
         return True
     

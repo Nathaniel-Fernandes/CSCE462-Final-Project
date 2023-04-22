@@ -60,4 +60,4 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
         except BaseException as e:
             print("Could not update table w/ tags", str(e))
         
-    return n, json.dumps(tags)
+    return n, tags
