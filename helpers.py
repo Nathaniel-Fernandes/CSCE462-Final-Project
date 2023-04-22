@@ -61,3 +61,16 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
             print("Could not update table w/ tags", str(e))
         
     return n, tags
+
+
+# def interrupt():
+#     while True:
+#         GPIO.wait_for_edge(setup.DRAWER_CLOSE_SWITCH_GPIO, GPIO.rising)
+
+#         # Use to add a cooldown delay
+#         if time.time() - setup.COOLDOWN > 20:
+#             break
+#         else:
+#             time.sleep(0.1)
+
+#     return True

@@ -320,15 +320,3 @@ def isConditionMet(condition):
     #     setup.COUNTDOWN_START_TIME = time.time()
 
     #     return True
-    
-# def interrupt():
-#     while True:
-#         GPIO.wait_for_edge(setup.DRAWER_CLOSE_SWITCH_GPIO, GPIO.rising)
-
-#         # Use to add a cooldown delay
-#         if time.time() - setup.COOLDOWN > 20:
-#             break
-#         else:
-#             time.sleep(0.1)
-
-#     return True
