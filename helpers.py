@@ -3,6 +3,7 @@ import binascii
 import json
 import time
 import globals as gb
+from typing import Tuple
 
 def SetupReader():
     # load the library
@@ -23,7 +24,7 @@ def SetupReader():
     return f
 
 # Runs a scan, updates the DB, and returns # of tags found
-def RunScan(runtimes=0) -> int:
+def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
     if runtimes > 3:
         return 0
     
@@ -48,7 +49,7 @@ def RunScan(runtimes=0) -> int:
         time.sleep(1)
         RunScan(runtimes+1)
 
-    else:
+    elif updateDB:
         try:
             res = gb.db.table('events').insert({
                 "event": "scan_result",
@@ -59,4 +60,4 @@ def RunScan(runtimes=0) -> int:
         except BaseException as e:
             print("Could not update table w/ tags", str(e))
         
-    return n
+    return n, json.dumps(tags)

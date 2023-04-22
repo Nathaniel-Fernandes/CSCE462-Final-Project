@@ -9,13 +9,17 @@ import globals as gb
 
 # limit scans to once per door being closed (not continuously scanning)
 has_scanned = False
+time_of_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 CONDITIONS = Enum("CONDITIONS", ["immediate", "wait_for_door_to_open", "wait_for_door_to_close"])
-STATES = Enum("STATES", ["reset", "drawer_closed", "drawer_open", "scanning"])
+STATES = Enum("STATES", ["reset", "drawer_closed", "drawer_open", "drawer_unlocked", "scanning"])
 EXECUTION_CONTEXT = Enum("EXECUTION_CONTEXT", ["suppress_sending_event_messages"])
 INSTRUCTIONS = Enum("INSTRUCTIONS", [
-    "reset_values", "setup_reader", "check_if_door_is_closed", "send_drawer_closed_status_event", "check_if_scanned",
-    "send_drawer_opened_status_event", "run_scan"
+    "reset_values", "setup_reader", 
+    "check_if_door_is_closed", 
+    "send_drawer_closed_status_event", "send_drawer_opened_status_event",
+    "check_if_scanned", "run_scan",
+    "unlock_door", "send_drawer_unlocked_status_event", "lock_door",  # new
 ])
 
 CABINET_STATE = {
@@ -33,6 +37,14 @@ CABINET_STATE = {
             INSTRUCTIONS.check_if_door_is_closed,
             INSTRUCTIONS.send_drawer_closed_status_event,
             INSTRUCTIONS.check_if_scanned,
+            INSTRUCTIONS.check_for_authorized_access_card
+        ]
+    },
+
+    STATES.drawer_unlocked: {
+        "instructions": [
+            INSTRUCTIONS.unlock_door,
+            INSTRUCTIONS.send_drawer_unlocked_status_event
         ]
     },
 
@@ -55,7 +67,7 @@ CABINET_STATE = {
 ##########    FUNCTIONS    ##########
 #####################################
 
-def FSM(state: str, execution_context=None):
+def FSM(state: str, execution_context=None, instruction_start_idx=0):
     ''' 
         This function implements a finite state machine (FSM).
         As with any FSM, there are two parts: the current state and the transition condition.
@@ -71,10 +83,13 @@ def FSM(state: str, execution_context=None):
     condition: CONDITIONS|None
     next_execution_context: EXECUTION_CONTEXT|None
 
-    # A. execute this state's instructions
-    for i in curr_state["instructions"]:
-        next_state, condition, next_execution_context = execute(i, execution_context)
+    # A. execute this state's instructions, optionally skipping some instructions
+    for i in range(instruction_start_idx[0], len(curr_state["instructions"])):
+        instruction = curr_state["instructions"][i]
 
+        next_state, condition, next_execution_context, next_instruction_start_index = execute(instruction, execution_context)
+
+        # go to another state before finishing this one's instructions?
         if any([next_state, condition, next_execution_context]):
             break
 
@@ -84,16 +99,23 @@ def FSM(state: str, execution_context=None):
         time.sleep(3) # so CPU doesn't burn up
     
     # C. Use tail recursion to transition indefinitely
-    return FSM(next_state, next_execution_context)
+    return FSM(next_state, next_execution_context, next_instruction_start_index)
 
 # list: [instruction name, [...parameters]]
 def execute(instruction: str, execution_context: str|None):
-    ''' Execute the instructions of the FSM'''
+    ''' Execute the instructions of the FSM
+        Note: returning 'None None None' proceeds to next instruction.
+        Returning anything else jumps to the specified state.
+    '''
     print("[EXEC] ", instruction, execution_context)
 
     global has_scanned
 
-    # DONE
+    # try to lock door as security measure
+    if time.time() > time_of_unlock + 60:
+        # TODO: lock door function
+        pass
+
     if instruction == INSTRUCTIONS.reset_values:
         try:
             has_scanned = False
@@ -105,7 +127,7 @@ def execute(instruction: str, execution_context: str|None):
         except BaseException as e:
             print("Reader already closed", str(e))
         
-        return None, None, None
+        return None, None, None, 0
 
     # DONE: 
     elif instruction == INSTRUCTIONS.setup_reader:
@@ -116,24 +138,18 @@ def execute(instruction: str, execution_context: str|None):
         except BaseException as e:
             print("could not connect to reader", str(e))
 
-        return STATES.drawer_closed, CONDITIONS.immediate, None
+        return STATES.drawer_closed, CONDITIONS.immediate, None, 0
 
     elif instruction == INSTRUCTIONS.check_if_door_is_closed:
         # if true, the door started OPEN not closed
         # if (GPIO.input(setup.BUTTON)): # TODO: fix
+        # use "isCondition" here
         if (bool(input("Enter if door is open: (hit enter for door closed)"))):
             return STATES.drawer_open, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages
         
-        else:
-            global time_of_most_recent_door_close
-            time_of_most_recent_door_close = time.time()
-
-            return None, None, None
+        return None, None, None, 0
 
     elif instruction == INSTRUCTIONS.send_drawer_closed_status_event:
-        global time_of_most_recent_door_open
-        time_of_most_recent_door_open = time.time()
-
         try:
             if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
                 res = gb.db.table('events').insert({
@@ -147,28 +163,26 @@ def execute(instruction: str, execution_context: str|None):
             print("Couldn't send drawer open message")
 
         finally:
-            return None, None, None
+            return None, None, None, 0
 
-    
     elif instruction == INSTRUCTIONS.check_if_scanned:
         if has_scanned:
-            return STATES.drawer_open, CONDITIONS.wait_for_door_to_open, None
+            return None, None, None, 0
         
         else:
-            return STATES.scanning, CONDITIONS.immediate, None
+            return STATES.scanning, CONDITIONS.immediate, None, 0
 
     elif instruction == INSTRUCTIONS.run_scan:
-        if has_scanned:
-            return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages
-        
-        status_code = helpers.RunScan(0)
+        if not has_scanned:
+            status_code, _ = helpers.RunScan(0, True)
 
-        # the reader could not find any tags. restart FSM.
-        if status_code == 0:
-            return STATES.reset, CONDITIONS.immediate, None
+            # the reader could not find any tags. restart FSM.
+            if status_code == 0:
+                return STATES.reset, CONDITIONS.immediate, None
         
-        has_scanned=True
-        return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages
+            has_scanned=True
+
+        return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 3
     
     elif instruction == INSTRUCTIONS.send_drawer_opened_status_event:
         if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
@@ -182,11 +196,30 @@ def execute(instruction: str, execution_context: str|None):
                 }).execute()
 
                 print("draw open?", res)
+
             except BaseException as e:
                 print("Couldn't send drawer open status event", str(e))
         
         return STATES.drawer_closed, CONDITIONS.wait_for_door_to_close, None
     
+    elif instruction == INSTRUCTIONS.check_for_authorized_access_card:
+        while True:
+            status_code, tags = helpers.RunScan(0)
+
+            # the reader could not find any tags. restart FSM.
+            if status_code == 0:
+                return STATES.reset, CONDITIONS.immediate, None
+        
+            else:
+                detected_epcs = map(lambda x: x["EPC"], tags)
+                if (any(epc in gb.authorized_personnel for epc in detected_epcs)):
+                    break
+                
+                print("Waiting for authorized personnel to badge in")
+                time.sleep(2)
+                
+        return STATES.drawer_unlocked, CONDITIONS.immediate, None, 0
+
     else:
         print("did not match any instructions!!!: ", instruction, execution_context)
         # TODO: this will throw an error, determine best course of action - maybe go to reset?
@@ -221,6 +254,12 @@ def isConditionMet(condition):
                 time.sleep(0.2)
             else:
                 times_detected_true = 0
+
+        return True
+    
+    elif condition == CONDITIONS.is_authorized_access_card_in_range:
+
+        
 
         return True
     
