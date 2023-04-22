@@ -9,14 +9,14 @@ def SetupReader():
     f = j421xlib.J4210()
     ver = f.LibVersion()
 
-    print("Lib Version: ", ver)
-    print('Last Error: ', f.LastError())
-    print("Available Serial Ports:", ports)
-
     # Get & Connect to a port
     ports = f.AvailablePorts()
     f.OpenPort(ports[1], 57600)
 
+    # Log data about reader for debugging purposes
+    print("Lib Version: ", ver)
+    print('Last Error: ', f.LastError())
+    print("Available Serial Ports:", ports)
     reader_info = f.LoadSettings()
     reader_info.echo()
 

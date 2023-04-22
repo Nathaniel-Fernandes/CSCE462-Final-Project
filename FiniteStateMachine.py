@@ -91,6 +91,8 @@ def execute(instruction: str, execution_context: str|None):
     ''' Execute the instructions of the FSM'''
     print("[EXEC] ", instruction, execution_context)
 
+    global has_scanned
+
     # DONE
     if instruction == INSTRUCTIONS.reset_values:
         try:
@@ -110,6 +112,7 @@ def execute(instruction: str, execution_context: str|None):
         try:
             gb.reader = helpers.SetupReader()
             print("reader: ", gb.reader, id(gb.reader))
+
         except BaseException as e:
             print("could not connect to reader", str(e))
 
@@ -133,7 +136,9 @@ def execute(instruction: str, execution_context: str|None):
 
         try:
             if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
-                res = db.table('events').insert({
+                print("gb db: ", id(gb.db))
+
+                res = gb.db.table('events').insert({
                     "event": "drawer_close",
                     "cabinet_id": 1,
                     # "user" # TODO: implement authentication - who opened, when, what did they take out?
@@ -173,7 +178,9 @@ def execute(instruction: str, execution_context: str|None):
                 # reset scan value once the door has been opened
                 has_scanned = False
 
-                res = db.table('events').insert({
+                print("gb db: ", id(gb.db))
+
+                res = gb.db.table('events').insert({
                     "event": "drawer_open",
                     "cabinet_id": 1
                 }).execute()
