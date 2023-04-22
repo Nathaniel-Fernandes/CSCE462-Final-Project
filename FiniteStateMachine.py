@@ -1,25 +1,13 @@
 import time
 from enum import Enum
 import helpers
-
-# TODO: Extract to a setup file
-reader = helpers.SetupReader()
-print("reader: ", reader, id(reader))
-
-# load env file
-import os
-from dotenv import load_dotenv
-from supabase import create_client, Client
-load_dotenv()
-
-# open connection to database
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
-db: Client = create_client(url, key)
+import globals as gb
 
 #####################################
 ##########    FSM HELPERS    ########
 #####################################
+
+# limit scans to once per door being closed (not continuously scanning)
 has_scanned = False
 
 CONDITIONS = Enum("CONDITIONS", ["immediate", "wait_for_door_to_open", "wait_for_door_to_close"])
@@ -103,17 +91,14 @@ def execute(instruction: str, execution_context: str|None):
     ''' Execute the instructions of the FSM'''
     print("[EXEC] ", instruction, execution_context)
 
-    global reader
-    global has_scanned
-
     # DONE
     if instruction == INSTRUCTIONS.reset_values:
         try:
             has_scanned = False
 
-            print("Reader: ", reader, id(reader))
+            print("Reader: ", gb.reader, id(gb.reader))
 
-            reader.ClosePort()
+            gb.reader.ClosePort()
 
         except BaseException as e:
             print("Reader already closed", str(e))
@@ -122,24 +107,30 @@ def execute(instruction: str, execution_context: str|None):
 
     # DONE: 
     elif instruction == INSTRUCTIONS.setup_reader:
-        # try:
-        reader = helpers.SetupReader()
-        print("reader: ", reader, id(reader))
-        # except:
-            # print("could not connect to reader")
+        try:
+            gb.reader = helpers.SetupReader()
+            print("reader: ", gb.reader, id(gb.reader))
+        except BaseException as e:
+            print("could not connect to reader", str(e))
 
         return STATES.drawer_closed, CONDITIONS.immediate, None
 
     elif instruction == INSTRUCTIONS.check_if_door_is_closed:
-        # if true, the door started open not closed
+        # if true, the door started OPEN not closed
         # if (GPIO.input(setup.BUTTON)): # TODO: fix
         if (bool(input("Enter if door is open: (hit enter for door closed)"))):
             return STATES.drawer_open, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages
         
         else:
+            global time_of_most_recent_door_close
+            time_of_most_recent_door_close = time.time()
+
             return None, None, None
 
     elif instruction == INSTRUCTIONS.send_drawer_closed_status_event:
+        global time_of_most_recent_door_open
+        time_of_most_recent_door_open = time.time()
+
         try:
             if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
                 res = db.table('events').insert({
@@ -167,7 +158,7 @@ def execute(instruction: str, execution_context: str|None):
         if has_scanned:
             return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages
         
-        status_code = helpers.RunScan(reader, db, 0)
+        status_code = helpers.RunScan(0)
 
         # the reader could not find any tags. restart FSM.
         if status_code == 0:
@@ -205,12 +196,29 @@ def isConditionMet(condition):
     
     elif condition == CONDITIONS.wait_for_door_to_open:
         # TODO: modify interrupt code here
-        input("hit enter when door has opened: ")
+        # need 10 door open events to confirm the door has ACTUALLY been open (and not just circuit accidentally jostling around and breaking)
+
+        times_detected_true = 0
+        while times_detected_true <= 10:
+            if input("is the door open? (type yes)"):
+                times_detected_true += 1
+                time.sleep(0.2)
+            else:
+                times_detected_true = 0
+
         return True
 
     elif condition == CONDITIONS.wait_for_door_to_close:
         # TODO: modify interrupt code here
-        input("hit enter when door has closed: ")
+
+        times_detected_true = 0
+        while times_detected_true <= 10:
+            if input("is the door currently closed? (type yes)"):
+                times_detected_true += 1
+                time.sleep(0.2)
+            else:
+                times_detected_true = 0
+
         return True
     
 
