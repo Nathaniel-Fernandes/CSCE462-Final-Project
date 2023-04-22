@@ -21,12 +21,12 @@ def SetupReader():
 
     # change power
     # print("Saving modified settings:")
-    try:
-        reader_info.Power = 26
-        f.SaveSettings(reader_info)
-        f.LoadSettings().echo()
-    except:
-        print("Could not save reader settings")
+    # try:
+    #     reader_info.Power = 26
+    #     f.SaveSettings(reader_info)
+    #     f.LoadSettings().echo()
+    # except:
+    #     print("Could not save reader settings")
 
     return f
 
@@ -169,14 +169,15 @@ def RunScan(reader, db, runtimes=0) -> int:
         time.sleep(2)
         RunScan(reader, db, runtimes+1)
 
-    try:
-        res = db.table('events').insert({
-            "event": "scan_result",
-            "cabinet_id": 1,
-            "scan_result": json.dumps(tags)
-        }).execute()
-        print(res)
-    except:
-        print("Could not update table w/ tags")
-    finally:
-        return n
+    else:
+        try:
+            res = db.table('events').insert({
+                "event": "scan_result",
+                "cabinet_id": 1,
+                "scan_result": json.dumps(tags)
+            }).execute()
+            print(res)
+        except BaseException as e:
+            print("Could not update table w/ tags", str(e))
+        
+    return n

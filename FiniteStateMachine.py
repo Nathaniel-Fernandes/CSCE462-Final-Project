@@ -4,6 +4,7 @@ import helpers
 
 # TODO: Extract to a setup file
 reader = helpers.SetupReader()
+print("reader: ", reader, id(reader))
 
 # load env file
 import os
@@ -33,31 +34,31 @@ CABINET_STATE = {
     # reset to initial
     STATES.reset: {
         "instructions": [
-            [INSTRUCTIONS.reset_values],
-            [INSTRUCTIONS.setup_reader]
+            INSTRUCTIONS.reset_values,
+            INSTRUCTIONS.setup_reader
         ],
     },
 
     # drawer is closed - waiting for open
     STATES.drawer_closed: {
         "instructions": [
-            [INSTRUCTIONS.check_if_door_is_closed],
-            [INSTRUCTIONS.send_drawer_closed_status_event],
-            [INSTRUCTIONS.check_if_scanned],
+            INSTRUCTIONS.check_if_door_is_closed,
+            INSTRUCTIONS.send_drawer_closed_status_event,
+            INSTRUCTIONS.check_if_scanned,
         ]
     },
 
     # Cabinet drawer is open
     STATES.drawer_open: {
         "instructions": [
-            [INSTRUCTIONS.send_drawer_opened_status_event],
+            INSTRUCTIONS.send_drawer_opened_status_event,
         ]
     },
 
     # UHF Reader is scanning
     STATES.scanning: {
         "instructions": [
-            [INSTRUCTIONS.run_scan]
+            INSTRUCTIONS.run_scan
         ]
     }
 }
@@ -74,64 +75,86 @@ def FSM(state: str, execution_context=None):
         param execution_context contains information from the previous state that impacts the execution of this 
         current state's instructions 
     '''
+    print("\n[STATE] ", state)
+
     curr_state = CABINET_STATE[state]
     
     next_state: STATES|None
     condition: CONDITIONS|None
-    params: EXECUTION_CONTEXT|None
+    next_execution_context: EXECUTION_CONTEXT|None
 
     # A. execute this state's instructions
     for i in curr_state["instructions"]:
-        next_state, condition, params = execute(i, execution_context)
+        next_state, condition, next_execution_context = execute(i, execution_context)
 
-        if any([next_state, condition, params]):
+        if any([next_state, condition, next_execution_context]):
             break
 
     # B. transition condition
     # TODO: can we implement a FSM interrupt?
-    while not isConditionMet(condition, params):
-        time.sleep(1) # so CPU doesn't burn up
+    while not isConditionMet(condition):
+        time.sleep(3) # so CPU doesn't burn up
     
     # C. Use tail recursion to transition indefinitely
-    return FSM(next_state)
+    return FSM(next_state, next_execution_context)
 
 # list: [instruction name, [...parameters]]
 def execute(instruction: str, execution_context: str|None):
     ''' Execute the instructions of the FSM'''
+    print("[EXEC] ", instruction, execution_context)
+
+    global reader
+    global has_scanned
+
+    # DONE
     if instruction == INSTRUCTIONS.reset_values:
         try:
             has_scanned = False
-            reader.ClosePort()
-        except:
-            print("Reader already closed")
 
+            print("Reader: ", reader, id(reader))
+
+            reader.ClosePort()
+
+        except BaseException as e:
+            print("Reader already closed", str(e))
+        
+        return None, None, None
+
+    # DONE: 
     elif instruction == INSTRUCTIONS.setup_reader:
-        try:
-            reader = helpers.SetupReader()
-        except:
-            print("could not connect to reader")
+        # try:
+        reader = helpers.SetupReader()
+        print("reader: ", reader, id(reader))
+        # except:
+            # print("could not connect to reader")
 
         return STATES.drawer_closed, CONDITIONS.immediate, None
 
     elif instruction == INSTRUCTIONS.check_if_door_is_closed:
         # if true, the door started open not closed
-        if (GPIO.input(setup.BUTTON)):
+        # if (GPIO.input(setup.BUTTON)): # TODO: fix
+        if (bool(input("Enter if door is open: (hit enter for door closed)"))):
             return STATES.drawer_open, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages
-
-    elif instruction == INSTRUCTIONS.send_drawer_closed_status_event:
-        if execution_context == EXECUTION_CONTEXT.suppress_sending_event_messages:
-            return
         
         else:
-            try:
+            return None, None, None
+
+    elif instruction == INSTRUCTIONS.send_drawer_closed_status_event:
+        try:
+            if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
                 res = db.table('events').insert({
                     "event": "drawer_close",
                     "cabinet_id": 1,
                     # "user" # TODO: implement authentication - who opened, when, what did they take out?
                 }).execute()
                 print("drawer close?", res)
-            except:
-                print("Couldn't send drawer open message")
+
+        except:
+            print("Couldn't send drawer open message")
+
+        finally:
+            return None, None, None
+
     
     elif instruction == INSTRUCTIONS.check_if_scanned:
         if has_scanned:
@@ -151,6 +174,7 @@ def execute(instruction: str, execution_context: str|None):
             return STATES.reset, CONDITIONS.immediate, None
         
         has_scanned=True
+        return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages
     
     elif instruction == INSTRUCTIONS.send_drawer_opened_status_event:
         if execution_context != EXECUTION_CONTEXT.suppress_sending_event_messages:
@@ -164,26 +188,30 @@ def execute(instruction: str, execution_context: str|None):
                 }).execute()
 
                 print("draw open?", res)
-            except:
-                print("Couldn't send drawer open status event")
+            except BaseException as e:
+                print("Couldn't send drawer open status event", str(e))
         
         return STATES.drawer_closed, CONDITIONS.wait_for_door_to_close, None
     
     else:
         print("did not match any instructions!!!: ", instruction, execution_context)
-        # TODO: this will throw an error, determine best course of action
+        # TODO: this will throw an error, determine best course of action - maybe go to reset?
 
-def isConditionMet(condition, conditionParams):
+def isConditionMet(condition):
+    print("[COND] ", condition)
+
     if condition == CONDITIONS.immediate:
         return True
     
     elif condition == CONDITIONS.wait_for_door_to_open:
         # TODO: modify interrupt code here
         input("hit enter when door has opened: ")
+        return True
 
     elif condition == CONDITIONS.wait_for_door_to_close:
         # TODO: modify interrupt code here
         input("hit enter when door has closed: ")
+        return True
     
 
     # if condition == "countdown":
@@ -201,14 +229,14 @@ def isConditionMet(condition, conditionParams):
 
     #     return True
     
-def interrupt():
-    while True:
-        GPIO.wait_for_edge(setup.DRAWER_CLOSE_SWITCH_GPIO, GPIO.rising)
+# def interrupt():
+#     while True:
+#         GPIO.wait_for_edge(setup.DRAWER_CLOSE_SWITCH_GPIO, GPIO.rising)
 
-        # Use to add a cooldown delay
-        if time.time() - setup.COOLDOWN > 20:
-            break
-        else:
-            time.sleep(0.1)
+#         # Use to add a cooldown delay
+#         if time.time() - setup.COOLDOWN > 20:
+#             break
+#         else:
+#             time.sleep(0.1)
 
-    return True
+#     return True
