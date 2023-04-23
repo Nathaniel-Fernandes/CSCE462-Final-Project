@@ -27,7 +27,6 @@ def IsDoorClosed() -> bool:
     '''
         1 = input high -> circuit unbroken -> door closed
         0 = input low -> circuit broken -> door open
-
     '''
 
     return bool(GPIO.input(DOOR_CIRCUIT))
@@ -36,13 +35,16 @@ def IsDoorOpen():
     return not bool(IsDoorClosed())
 
 # business logic
+def ClosePins():
+    GPIO.cleanup()
+    
 def LockDoor():
     GPIO.output(LOCK_OUTPUT, GPIO.HIGH)
-    print("drawer locked!")
+    print("[LOCKED] Drawer locked successfully.")
 
 def UnlockDoor():
     GPIO.output(LOCK_OUTPUT, GPIO.LOW)
-    print("drawer unlocked!")
+    print("[UNLOCK] Drawer unlocked successfully.")
 
 def WaitForDoorToOpen():
     if IsDoorOpen():
@@ -87,10 +89,9 @@ who_unlocked_the_door = ''
 time_of_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 def LockDoorEvery60Sec():
-    print("[DOOR] attempting to lock")
+    print("[LOCKED] Security Measure - Attempting to lock drawer every 60 seconds.")
     if IsDoorClosed():
         LockDoor()
-        print("[DOOR] Door locked")
 
     threading.Timer(60.0, LockDoorEvery60Sec).start()
 

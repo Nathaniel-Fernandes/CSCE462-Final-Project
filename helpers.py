@@ -12,12 +12,12 @@ def SetupReader():
 
     # Get & Connect to a port
     ports = f.AvailablePorts()
-    f.OpenPort(ports[1], 57600)
+    f.OpenPort(ports[0], 57600)
 
     # Log data about reader for debugging purposes
-    print("Lib Version: ", ver)
-    print('Last Error: ', f.LastError())
-    print("Available Serial Ports:", ports)
+    print("[READER] Lib Version: ", ver)
+    print('[READER] Last Error: ', f.LastError())
+    print("[READER] Available Serial Ports: ", ports)
     reader_info = f.LoadSettings()
     reader_info.echo()
 
@@ -30,7 +30,7 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
     
     n = gb.reader.Inventory(False)    # Perform inventory scan
 
-    print("Tags found: ", n)
+    print("[SCANNED] Tags found: ", n)
     tags = list()
 
     for i in range(n):
@@ -45,7 +45,7 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
         tags.append(data)
 
     if len(tags) <= 0:
-        print("Found no tags. Running again in 2 seconds.")
+        print("[WARNING] Found no tags. Running again in 2 seconds.")
         time.sleep(1)
         RunScan(runtimes+1)
 
@@ -56,21 +56,10 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
                 "cabinet_id": 1,
                 "scan_result": json.dumps(tags)
             }).execute()
-            print(res)
+            
+            print("[RESPONSE] Successfully inserted tags into database")
+            
         except BaseException as e:
-            print("Could not update table w/ tags", str(e))
+            print("[ERROR] Failed to update table with tags: ", str(e))
         
     return n, tags
-
-
-# def interrupt():
-#     while True:
-#         GPIO.wait_for_edge(setup.DRAWER_CLOSE_SWITCH_GPIO, GPIO.rising)
-
-#         # Use to add a cooldown delay
-#         if time.time() - setup.COOLDOWN > 20:
-#             break
-#         else:
-#             time.sleep(0.1)
-
-#     return True
