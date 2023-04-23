@@ -207,7 +207,7 @@ def execute(instruction: str, execution_context: str):
     
     elif instruction == INSTRUCTIONS.check_for_authorized_access_card:
         while True and gpio.IsDoorLocked():
-            colors.print_colors("[AWAIT] Waiting for authorized personnel to badge in.", "log")
+            colors.print_color("[AWAIT] Waiting for authorized personnel to badge in.", "log")
 
             # checks every 2 sec to prevent burning up CPU
             time.sleep(2)

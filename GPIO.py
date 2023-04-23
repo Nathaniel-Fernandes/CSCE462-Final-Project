@@ -26,7 +26,7 @@ def IsDoorLocked() -> bool:
         1 -> electromagnet on -> door locked -> true == bool(1)
     '''
     val = bool(GPIO.input(LOCK_INPUT))
-    colors.print_color("[OUTPUT] Is door locked? %b" % b, "log")
+    colors.print_color("[OUTPUT] Is door locked? %r" % bool(val), "log")
     return val
 
 def IsDoorClosed() -> bool:
