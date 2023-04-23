@@ -44,21 +44,18 @@ def get_remote_unlock_events():
     
     res = db.table("events").select("*").eq("event", "remote_unlock").execute()
        
-    new_num_found = len(res.data)
+    num_found = len(res.data)
     
-    if new_num_found > num_found:
-        num_found = new_num_found
-        print("[REMOTE] Number of remote unlock events: ", num_found)
-        
     if num_of_remote_unlock_events == None:
-        num_of_remote_unlock_events = num_found
+        num_of_remote_unlock_events = num_found 
         
     else:
         if num_found > num_of_remote_unlock_events:
             # A remote unlock signal has been sent. Unlock the door.
+            print("[REMOTE] Door remotely unlocked.")
             gpio.UnlockDoor()
             num_of_remote_unlock_events = num_found
-    
+            
     if thread2 != None:
         thread2.cancel()
         
