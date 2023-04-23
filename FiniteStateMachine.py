@@ -132,6 +132,7 @@ def execute(instruction: str, execution_context: str):
 
         except BaseException as e:
             print("[ERROR] could not connect to reader: ", str(e))
+            return STATES.reset, CONDITIONS.immediate, EXECUTION_CONTEXT.sleep_10_sec, 0
 
         return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 0
 

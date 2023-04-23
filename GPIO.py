@@ -6,6 +6,9 @@ import threading
 GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
 
+who_unlocked_the_door = ''
+time_of_last_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
+
 # define pins
 LOCK_OUTPUT = 36
 LOCK_INPUT = 16
@@ -39,6 +42,8 @@ def ClosePins():
     GPIO.cleanup()
     
 def LockDoor():
+    global time_of_last_lock
+    time_of_last_lock = time.time()
     GPIO.output(LOCK_OUTPUT, GPIO.HIGH)
     print("[LOCKED] Drawer locked successfully.")
 
@@ -52,14 +57,14 @@ def WaitForDoorToOpen():
     
     while True:
         # use interrupt not to fry CPU
-        GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.FALLING)
+        # GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.FALLING)
 
         # use polling to check if door is open 10x to ensure falling edge was not an accident
         times_detected_true = 0
         while times_detected_true < 10:
+            time.sleep(0.3)
             if IsDoorOpen():
                 times_detected_true += 1
-                time.sleep(0.2)
             else:
                 times_detected_true = 0 
     
@@ -71,26 +76,22 @@ def WaitForDoorToClose():
     
     while True:
         # use interrupt not to fry CPU
-        GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.RISING)
+        # GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.RISING)
 
         # use polling to check if door is open 10x to ensure falling edge was not an accident
         times_detected_true = 0
         while times_detected_true < 10:
+            time.sleep(0.3)
             if IsDoorClosed():
                 times_detected_true += 1
-                time.sleep(0.2)
             else:
                 times_detected_true = 0 
     
         return True
-    
-
-who_unlocked_the_door = ''
-time_of_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 def LockDoorEvery60Sec():
     print("[LOCKED] Security Measure - Attempting to lock drawer every 60 seconds.")
-    if IsDoorClosed():
+    if IsDoorClosed() and time.time() > 60 + time_of_last_unlock:
         LockDoor()
 
     threading.Timer(60.0, LockDoorEvery60Sec).start()

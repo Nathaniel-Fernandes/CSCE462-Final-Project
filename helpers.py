@@ -2,24 +2,38 @@ import lib.j421xlib as j421xlib
 import binascii
 import json
 import time
+import signal
 import globals as gb
 from typing import Tuple
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException
+
+signal.signal(signal.SIGALRM, timeout_handler)
 
 def SetupReader():
     # load the library
     f = j421xlib.J4210()
     ver = f.LibVersion()
 
+    # if it takes longer than 10 sec, something is wrong.
+    signal.alarm(10)
+
     # Get & Connect to a port
     ports = f.AvailablePorts()
     f.OpenPort(ports[0], 57600)
-
+    
     # Log data about reader for debugging purposes
     print("[READER] Lib Version: ", ver)
     print('[READER] Last Error: ', f.LastError())
     print("[READER] Available Serial Ports: ", ports)
     reader_info = f.LoadSettings()
     reader_info.echo()
+    
+    signal.alarm(0)
 
     return f
 
