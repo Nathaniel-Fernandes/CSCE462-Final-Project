@@ -92,7 +92,6 @@ def LockDoorEvery60Sec():
         LockDoor()
         print("[DOOR] Door locked")
 
-    threading.Timer(10.0, LockDoorEvery60Sec).start()
+    threading.Timer(60.0, LockDoorEvery60Sec).start()
 
 LockDoorEvery60Sec()
-    
