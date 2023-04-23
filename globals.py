@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client 
 import threading
 import GPIO as gpio
+import colors
 
 # A. one instance, used everywhere
 reader = None
@@ -52,7 +53,7 @@ def get_remote_unlock_events():
     else:
         if num_found > num_of_remote_unlock_events:
             # A remote unlock signal has been sent. Unlock the door.
-            print("[REMOTE] Door remotely unlocked.")
+            colors.print_color("[REMOTE] Door remotely unlocked.", "warning")
             gpio.UnlockDoor()
             num_of_remote_unlock_events = num_found
             

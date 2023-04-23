@@ -3,8 +3,9 @@ import binascii
 import json
 import time
 import signal
-import globals as gb
 from typing import Tuple
+import globals as gb
+import colors
 
 class TimeoutException(Exception):
     pass
@@ -27,9 +28,9 @@ def SetupReader():
     f.OpenPort(ports[0], 57600)
     
     # Log data about reader for debugging purposes
-    print("[READER] Lib Version: ", ver)
-    print('[READER] Last Error: ', f.LastError())
-    print("[READER] Available Serial Ports: ", ports)
+    colors.print_color("[READER] Lib Version: %s" % ver, "log")
+    colors.print_color('[READER] Last Error: %s' % f.LastError(), "log")
+    colors.print_color("[READER] Available Serial Ports: %s" % str(ports), "log")
     reader_info = f.LoadSettings()
     reader_info.echo()
     
@@ -44,7 +45,7 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
     
     n = gb.reader.Inventory(False)    # Perform inventory scan
 
-    print("[SCANNED] Tags found: ", n)
+    colors.print_color("[SCANNED] Tags found: %d" % n, "log")
     tags = list()
 
     for i in range(n):
@@ -59,7 +60,7 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
         tags.append(data)
 
     if len(tags) <= 0:
-        print("[WARNING] Found no tags. Running again in 2 seconds.")
+        colors.print_color("[WARNING] Found no tags. Running again in 2 seconds.", "warning")
         time.sleep(1)
         RunScan(runtimes+1)
 
@@ -71,9 +72,10 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
                 "scan_result": json.dumps(tags)
             }).execute()
             
-            print("[RESPONSE] Successfully inserted tags into database")
+            colors.print_color("[RESPONSE] Successfully inserted tags into database", "success")
             
         except BaseException as e:
-            print("[ERROR] Failed to update table with tags: ", str(e))
+            colors.print_color("[ERROR] Failed to update table with tags: %s" % str(e), "error")
         
     return n, tags
+

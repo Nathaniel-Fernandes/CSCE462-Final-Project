@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 import time
 import threading
+import colors
 
 # setup board
 GPIO.setmode(GPIO.BOARD)
@@ -24,7 +25,9 @@ def IsDoorLocked() -> bool:
         0 -> electromagnet off -> door unlocked -> false == bool(0)
         1 -> electromagnet on -> door locked -> true == bool(1)
     '''
-    return bool(GPIO.input(LOCK_INPUT))
+    val = bool(GPIO.input(LOCK_INPUT))
+    colors.print_color("[OUTPUT] Is door locked? %b" % b, "log")
+    return val
 
 def IsDoorClosed() -> bool:
     '''
@@ -43,13 +46,13 @@ def ClosePins():
     
 def LockDoor():
     GPIO.output(LOCK_OUTPUT, GPIO.HIGH)
-    print("[LOCKED] Drawer locked successfully.")
+    colors.print_color("[LOCKED] Drawer locked successfully.", "success")
 
 def UnlockDoor():
     global time_of_last_unlock
     time_of_last_unlock = time.time()
     GPIO.output(LOCK_OUTPUT, GPIO.LOW)
-    print("[UNLOCK] Drawer unlocked successfully.")
+    colors.print_color("[UNLOCK] Drawer unlocked successfully.", "success")
 
 def WaitForDoorToOpen():
     if IsDoorOpen():
@@ -90,7 +93,7 @@ def WaitForDoorToClose():
         return True
 
 def LockDoorEvery60Sec():
-    print("[LOCKED] Security Measure - Attempting to lock drawer every 60 seconds.")
+    colors.print_color("[LOCKED] Security Measure - Attempting to lock drawer every 60 seconds.", "warning")
     if IsDoorClosed() and time.time() > 60 + time_of_last_unlock:
         LockDoor()
 

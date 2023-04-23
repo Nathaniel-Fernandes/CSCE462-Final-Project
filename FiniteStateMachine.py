@@ -3,6 +3,7 @@ from enum import Enum
 import helpers
 import globals as gb
 import GPIO as gpio
+import colors
 
 #####################################
 ##########    FSM HELPERS    ########
@@ -76,7 +77,7 @@ def FSM(state: str, execution_context=None, instruction_start_idx=0):
         param execution_context contains information from the previous state that impacts the execution of this 
         current state's instructions 
     '''
-    print("\n\n[STATE] ", state)
+    colors.print_color("\n\n[STATE] %s" % state, "log")
 
     curr_state = CABINET_STATE[state]
     
@@ -110,7 +111,7 @@ def execute(instruction: str, execution_context: str):
         Note: returning 'None None None' proceeds to next instruction.
         Returning anything else jumps to the specified state.
     '''
-    print("[XCUTE] ", instruction, execution_context)
+    colors.print_color("[XCUTE] %s %s" % (instruction, execution_context), "log")
 
     global has_scanned
 
@@ -124,7 +125,7 @@ def execute(instruction: str, execution_context: str):
                 time.sleep(10)
                 
         except BaseException as e:
-            print("[ERROR] reader already closed: ", str(e))
+            colors.print_color("[ERROR] reader already closed: %s" % str(e), "error")
         
         return None, None, None, 0
 
@@ -133,7 +134,7 @@ def execute(instruction: str, execution_context: str):
             gb.reader = helpers.SetupReader()
 
         except BaseException as e:
-            print("[ERROR] could not connect to reader: ", str(e))
+            colors.print_color("[ERROR] could not connect to reader: %s" % str(e), "error")
             return STATES.reset, CONDITIONS.immediate, EXECUTION_CONTEXT.sleep_10_sec, 0
 
         return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 0
@@ -162,10 +163,10 @@ def execute(instruction: str, execution_context: str):
                     "cabinet_id": 1,
                 }).execute()
 
-                print("[RESPO] Inserted drawer open event successfully")
+                colors.print_color("[RESPO] Inserted drawer open event successfully.", "success")
 
             except BaseException as e:
-                print("[ERROR] Failed to send drawer open event: ", str(e))
+                colors.print_color("[ERROR] Failed to send drawer open event: %s" % str(e), "error")
         
         return STATES.drawer_closed, CONDITIONS.wait_for_door_to_close, None, 0
 
@@ -178,9 +179,9 @@ def execute(instruction: str, execution_context: str):
                     "cabinet_id": 1,
                 }).execute()
                 
-                print("[RESPO] Inserted drawer closed status event successfully")
+                colors.print_color("[RESPO] Inserted drawer closed status event successfully.", "success")
         except BaseException as e:
-            print("[ERROR] Failed to send drawer closed status event: ", str(e))
+            colors.print_color("[ERROR] Failed to send drawer closed status event: %s" % str(e), "error")
 
         finally:
             return None, None, None, 0
@@ -206,7 +207,7 @@ def execute(instruction: str, execution_context: str):
     
     elif instruction == INSTRUCTIONS.check_for_authorized_access_card:
         while True and gpio.IsDoorLocked():
-            print("[AWAIT] Waiting for authorized personnel to badge in")
+            colors.print_colors("[AWAIT] Waiting for authorized personnel to badge in.", "log")
 
             # checks every 2 sec to prevent burning up CPU
             time.sleep(2)
@@ -220,11 +221,10 @@ def execute(instruction: str, execution_context: str):
             else:
                 detected_epcs = list(map(lambda x: x["EPC"], tags))
                 matches = set(gb.authorized_personnel).intersection(set(detected_epcs))
-
             
                 if (len(matches) > 0):
                     gpio.who_unlocked_the_door = list(matches)[0]
-                    print("[AUSER] Authorized user who opened door: ", gpio.who_unlocked_the_door)
+                    colors.print_color("[AUSER] Authorized user who opened door: %s" % gpio.who_unlocked_the_door, "blue")
                     break
 
         return STATES.drawer_unlocked, CONDITIONS.immediate, None, 0
@@ -244,10 +244,10 @@ def execute(instruction: str, execution_context: str):
                     "user": gpio.who_unlocked_the_door
                 }).execute()
                 
-                print("[RESPO] Sent drawer unlocked status event successfully")
+                colors.print_color("[RESPO] Sent drawer unlocked status event successfully.", "success")
 
         except BaseException as e:
-            print("[ERROR] Failed to send drawer open message: ", str(e))
+            colors.print_color("[ERROR] Failed to send drawer open message: %s" % str(e), "error")
 
         finally:
             return STATES.drawer_open, CONDITIONS.wait_for_door_to_open, None, 0
@@ -256,7 +256,7 @@ def execute(instruction: str, execution_context: str):
         print("[DANGER] Instruction did not match any instructions: ", instruction, execution_context)
 
 def isConditionMet(condition):
-    print("[CHECK] Running the following condition: ", condition)
+    colors.print_color("[CHECK] Running the following condition: %s" % condition, "log")
 
     if condition == CONDITIONS.immediate:
         return True
