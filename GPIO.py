@@ -42,12 +42,12 @@ def ClosePins():
     GPIO.cleanup()
     
 def LockDoor():
-    global time_of_last_lock
-    time_of_last_lock = time.time()
     GPIO.output(LOCK_OUTPUT, GPIO.HIGH)
     print("[LOCKED] Drawer locked successfully.")
 
 def UnlockDoor():
+    global time_of_last_unlock
+    time_of_last_unlock = time.time()
     GPIO.output(LOCK_OUTPUT, GPIO.LOW)
     print("[UNLOCK] Drawer unlocked successfully.")
 
