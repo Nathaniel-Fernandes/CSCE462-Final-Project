@@ -8,7 +8,7 @@ GPIO.setwarnings(False)
 
 # define pins
 LOCK_OUTPUT = 36
-LOCK_INPUT = 36
+LOCK_INPUT = 16
 DOOR_CIRCUIT = 15
 
 GPIO.setup(LOCK_OUTPUT, GPIO.OUT)
@@ -39,7 +39,6 @@ def IsDoorOpen():
 def LockDoor():
     GPIO.output(LOCK_OUTPUT, GPIO.HIGH)
     print("drawer locked!")
-
 
 def UnlockDoor():
     GPIO.output(LOCK_OUTPUT, GPIO.LOW)
