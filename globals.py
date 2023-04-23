@@ -22,14 +22,17 @@ def get_authorized_personnel():
     global thread1
     
     res = db.table('cabinet').select('authorized_personnel').neq('authorized_personnel', None).execute()
-    authorized_personnel = list(map(lambda d: d['authorized_personnel'], res.data))
+    fetched_authorized_personnel = list(map(lambda d: d['authorized_personnel'], res.data))
     
+    if set(authorized_personnel) != set(fetched_authorized_personnel):
+        authorized_personnel = fetched_authorized_personnel
+        print("[AUSER] Personnel authorized to open this cabinet have IDs: ", authorized_personnel)    
+ 
     if thread1 != None:
         thread1.cancel()
         
     thread1 = threading.Timer(10.0, get_authorized_personnel).start()
-    print("[AUSER] The personnel authorized to open this cabinet have IDs: ", authorized_personnel)
-
+    
 get_authorized_personnel() 
 
 # C2 Listen for remote unlock events
@@ -39,13 +42,14 @@ def get_remote_unlock_events():
     global thread2
     global num_of_remote_unlock_events
     
-    # query = "SELECT COUNT(event) FROM events WHERE event = 'remote_unlock'"
-    # res = db.from_params(query)
     res = db.table("events").select("*").eq("event", "remote_unlock").execute()
        
-    num_found = len(res.data)
-    print("[REMOTE] Number of remote unlock events: ", num_found)
+    new_num_found = len(res.data)
     
+    if new_num_found > num_found:
+        num_found = new_num_found
+        print("[REMOTE] Number of remote unlock events: ", num_found)
+        
     if num_of_remote_unlock_events == None:
         num_of_remote_unlock_events = num_found
         
@@ -57,6 +61,7 @@ def get_remote_unlock_events():
     
     if thread2 != None:
         thread2.cancel()
+        
     thread2 = threading.Timer(10.0, get_remote_unlock_events).start()
 
 get_remote_unlock_events()

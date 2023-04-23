@@ -89,7 +89,9 @@ def FSM(state: str, execution_context=None, instruction_start_idx=0):
         instruction = curr_state["instructions"][i]
 
         next_state, condition, next_execution_context, next_instruction_start_index = execute(instruction, execution_context)
-
+        
+        time.sleep(1) # delay next instruction so output is more human readable
+        
         # go to another state before finishing this one's instructions?
         if any([next_state, condition, next_execution_context]):
             break
