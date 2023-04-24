@@ -1,5 +1,6 @@
 import FiniteStateMachine as FSM
 import globals as gb
+import GPIO as gpio
 
 def main():   
     # begin Finite State Machine
@@ -8,8 +9,8 @@ def main():
 
     except BaseException as e:
         gb.reader.ClosePort()
-        print("exception thrown", str(e))
+        print("[ERROR] Exception thrown: ", str(e))
 
 if ( __name__ == "__main__"):
     main()
-    # GPIO.cleanup()
+    gpio.ClosePins()

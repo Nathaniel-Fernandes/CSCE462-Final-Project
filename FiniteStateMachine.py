@@ -3,6 +3,7 @@ from enum import Enum
 import helpers
 import globals as gb
 import GPIO as gpio
+import colors
 
 #####################################
 ##########    FSM HELPERS    ########
@@ -13,7 +14,7 @@ has_scanned = False
 
 CONDITIONS = Enum("CONDITIONS", ["immediate", "wait_for_door_to_open", "wait_for_door_to_close"])
 STATES = Enum("STATES", ["reset", "drawer_closed", "drawer_open", "drawer_unlocked", "scanning"])
-EXECUTION_CONTEXT = Enum("EXECUTION_CONTEXT", ["suppress_sending_event_messages"])
+EXECUTION_CONTEXT = Enum("EXECUTION_CONTEXT", ["suppress_sending_event_messages", "sleep_10_sec"])
 INSTRUCTIONS = Enum("INSTRUCTIONS", [
     "reset_values", "setup_reader", 
     "check_if_door_is_closed", 
@@ -76,20 +77,22 @@ def FSM(state: str, execution_context=None, instruction_start_idx=0):
         param execution_context contains information from the previous state that impacts the execution of this 
         current state's instructions 
     '''
-    print("\n[STATE] ", state)
+    colors.print_color("\n\n[STATE] %s" % state, "log")
 
     curr_state = CABINET_STATE[state]
     
-    next_state: STATES|None
-    condition: CONDITIONS|None
-    next_execution_context: EXECUTION_CONTEXT|None
+    next_state: STATES
+    condition: CONDITIONS
+    next_execution_context: EXECUTION_CONTEXT
 
     # A. execute this state's instructions, optionally skipping some instructions
     for i in range(instruction_start_idx, len(curr_state["instructions"])):
         instruction = curr_state["instructions"][i]
 
         next_state, condition, next_execution_context, next_instruction_start_index = execute(instruction, execution_context)
-
+        
+        time.sleep(1) # delay next instruction so output is more human readable
+        
         # go to another state before finishing this one's instructions?
         if any([next_state, condition, next_execution_context]):
             break
@@ -103,36 +106,36 @@ def FSM(state: str, execution_context=None, instruction_start_idx=0):
     return FSM(next_state, next_execution_context, next_instruction_start_index)
 
 # list: [instruction name, [...parameters]]
-def execute(instruction: str, execution_context: str|None):
+def execute(instruction: str, execution_context: str):
     ''' Execute the instructions of the FSM
         Note: returning 'None None None' proceeds to next instruction.
         Returning anything else jumps to the specified state.
     '''
-    print("[EXEC] ", instruction, execution_context)
+    colors.print_color("[XCUTE] %s %s" % (instruction, execution_context), "log")
 
     global has_scanned
 
     if instruction == INSTRUCTIONS.reset_values:
         try:
             has_scanned = False
-
-            print("Reader: ", gb.reader, id(gb.reader))
-
             gb.reader.ClosePort()
+            time.sleep(3) # give 3 seconds to allow reader to reboot
 
+            if execution_context == EXECUTION_CONTEXT.sleep_10_sec:
+                time.sleep(10)
+                
         except BaseException as e:
-            print("Reader already closed", str(e))
+            colors.print_color("[ERROR] reader already closed: %s" % str(e), "error")
         
         return None, None, None, 0
 
-    # DONE: 
     elif instruction == INSTRUCTIONS.setup_reader:
         try:
             gb.reader = helpers.SetupReader()
-            print("reader: ", gb.reader, id(gb.reader))
 
         except BaseException as e:
-            print("could not connect to reader", str(e))
+            colors.print_color("[ERROR] could not connect to reader: %s" % str(e), "error")
+            return STATES.reset, CONDITIONS.immediate, EXECUTION_CONTEXT.sleep_10_sec, 0
 
         return STATES.drawer_closed, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 0
 
@@ -160,10 +163,10 @@ def execute(instruction: str, execution_context: str|None):
                     "cabinet_id": 1,
                 }).execute()
 
-                print("draw open?", res)
+                colors.print_color("[RESPO] Inserted drawer open event successfully.", "success")
 
             except BaseException as e:
-                print("Couldn't send drawer open status event", str(e))
+                colors.print_color("[ERROR] Failed to send drawer open event: %s" % str(e), "error")
         
         return STATES.drawer_closed, CONDITIONS.wait_for_door_to_close, None, 0
 
@@ -175,10 +178,10 @@ def execute(instruction: str, execution_context: str|None):
                     "event": "drawer_close",
                     "cabinet_id": 1,
                 }).execute()
-                print("drawer close?", res)
-
-        except:
-            print("Couldn't send drawer open message")
+                
+                colors.print_color("[RESPO] Inserted drawer closed status event successfully.", "success")
+        except BaseException as e:
+            colors.print_color("[ERROR] Failed to send drawer closed status event: %s" % str(e), "error")
 
         finally:
             return None, None, None, 0
@@ -196,7 +199,7 @@ def execute(instruction: str, execution_context: str|None):
 
             # the reader could not find any tags. restart FSM.
             if status_code == 0:
-                return STATES.reset, CONDITIONS.immediate, None, 0
+                return STATES.reset, CONDITIONS.immediate, EXECUTION_CONTEXT.sleep_10_sec, 0
         
             has_scanned=True
 
@@ -204,7 +207,7 @@ def execute(instruction: str, execution_context: str|None):
     
     elif instruction == INSTRUCTIONS.check_for_authorized_access_card:
         while True and gpio.IsDoorLocked():
-            print("Waiting for authorized personnel to badge in")
+            colors.print_color("[AWAIT] Waiting for authorized personnel to badge in.", "log")
 
             # checks every 2 sec to prevent burning up CPU
             time.sleep(2)
@@ -218,11 +221,10 @@ def execute(instruction: str, execution_context: str|None):
             else:
                 detected_epcs = list(map(lambda x: x["EPC"], tags))
                 matches = set(gb.authorized_personnel).intersection(set(detected_epcs))
-
-                print("detected epcs: detected matches:", detected_epcs, matches, gb.authorized_personnel)
+            
                 if (len(matches) > 0):
                     gpio.who_unlocked_the_door = list(matches)[0]
-                    print("authorized user: ", gpio.who_unlocked_the_door)
+                    colors.print_color("[AUSER] Authorized user who opened door: %s" % gpio.who_unlocked_the_door, "blue")
                     break
 
         return STATES.drawer_unlocked, CONDITIONS.immediate, None, 0
@@ -241,20 +243,20 @@ def execute(instruction: str, execution_context: str|None):
                     "cabinet_id": 1,
                     "user": gpio.who_unlocked_the_door
                 }).execute()
-                print("drawer unlock msg sent?", res)
+                
+                colors.print_color("[RESPO] Sent drawer unlocked status event successfully.", "success")
 
-        except:
-            print("Couldn't send drawer open message")
+        except BaseException as e:
+            colors.print_color("[ERROR] Failed to send drawer open message: %s" % str(e), "error")
 
         finally:
             return STATES.drawer_open, CONDITIONS.wait_for_door_to_open, None, 0
         
     else:
-        print("did not match any instructions!!!: ", instruction, execution_context)
-        # TODO: this will throw an error, determine best course of action - maybe go to reset?
+        print("[DANGER] Instruction did not match any instructions: ", instruction, execution_context)
 
 def isConditionMet(condition):
-    print("[COND] ", condition)
+    colors.print_color("[CHECK] Running the following condition: %s" % condition, "log")
 
     if condition == CONDITIONS.immediate:
         return True

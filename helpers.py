@@ -2,24 +2,39 @@ import lib.j421xlib as j421xlib
 import binascii
 import json
 import time
-import globals as gb
+import signal
 from typing import Tuple
+import globals as gb
+import colors
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException
+
+signal.signal(signal.SIGALRM, timeout_handler)
 
 def SetupReader():
     # load the library
     f = j421xlib.J4210()
     ver = f.LibVersion()
 
+    # if it takes longer than 10 sec, something is wrong.
+    signal.alarm(10)
+
     # Get & Connect to a port
     ports = f.AvailablePorts()
-    f.OpenPort(ports[1], 57600)
-
+    f.OpenPort(ports[0], 57600)
+    
     # Log data about reader for debugging purposes
-    print("Lib Version: ", ver)
-    print('Last Error: ', f.LastError())
-    print("Available Serial Ports:", ports)
+    colors.print_color("[READER] Lib Version: %s" % ver, "log")
+    colors.print_color('[READER] Last Error: %s' % f.LastError(), "log")
+    colors.print_color("[READER] Available Serial Ports: %s" % str(ports), "log")
     reader_info = f.LoadSettings()
     reader_info.echo()
+    
+    signal.alarm(0)
 
     return f
 
@@ -30,7 +45,7 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
     
     n = gb.reader.Inventory(False)    # Perform inventory scan
 
-    print("Tags found: ", n)
+    colors.print_color("[SCANNED] Tags found: %d" % n, "log")
     tags = list()
 
     for i in range(n):
@@ -45,7 +60,7 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
         tags.append(data)
 
     if len(tags) <= 0:
-        print("Found no tags. Running again in 2 seconds.")
+        colors.print_color("[WARNING] Found no tags. Running again in 2 seconds.", "warning")
         time.sleep(1)
         RunScan(runtimes+1)
 
@@ -56,21 +71,11 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
                 "cabinet_id": 1,
                 "scan_result": json.dumps(tags)
             }).execute()
-            print(res)
+            
+            colors.print_color("[RESPONSE] Successfully inserted tags into database", "success")
+            
         except BaseException as e:
-            print("Could not update table w/ tags", str(e))
+            colors.print_color("[ERROR] Failed to update table with tags: %s" % str(e), "error")
         
     return n, tags
 
-
-# def interrupt():
-#     while True:
-#         GPIO.wait_for_edge(setup.DRAWER_CLOSE_SWITCH_GPIO, GPIO.rising)
-
-#         # Use to add a cooldown delay
-#         if time.time() - setup.COOLDOWN > 20:
-#             break
-#         else:
-#             time.sleep(0.1)
-
-#     return True

@@ -1,10 +1,14 @@
 import RPi.GPIO as GPIO
 import time
 import threading
+import colors
 
 # setup board
 GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
+
+who_unlocked_the_door = ''
+time_of_last_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 # define pins
 LOCK_OUTPUT = 36
@@ -21,13 +25,14 @@ def IsDoorLocked() -> bool:
         0 -> electromagnet off -> door unlocked -> false == bool(0)
         1 -> electromagnet on -> door locked -> true == bool(1)
     '''
-    return bool(GPIO.input(LOCK_INPUT))
+    val = bool(GPIO.input(LOCK_INPUT))
+    colors.print_color("[OUTPUT] Is door locked? %r" % bool(val), "log")
+    return val
 
 def IsDoorClosed() -> bool:
     '''
         1 = input high -> circuit unbroken -> door closed
         0 = input low -> circuit broken -> door open
-
     '''
 
     return bool(GPIO.input(DOOR_CIRCUIT))
@@ -36,13 +41,18 @@ def IsDoorOpen():
     return not bool(IsDoorClosed())
 
 # business logic
+def ClosePins():
+    GPIO.cleanup()
+    
 def LockDoor():
     GPIO.output(LOCK_OUTPUT, GPIO.HIGH)
-    print("drawer locked!")
+    colors.print_color("[LOCKED] Drawer locked successfully.", "success")
 
 def UnlockDoor():
+    global time_of_last_unlock
+    time_of_last_unlock = time.time()
     GPIO.output(LOCK_OUTPUT, GPIO.LOW)
-    print("drawer unlocked!")
+    colors.print_color("[UNLOCK] Drawer unlocked successfully.", "success")
 
 def WaitForDoorToOpen():
     if IsDoorOpen():
@@ -50,14 +60,14 @@ def WaitForDoorToOpen():
     
     while True:
         # use interrupt not to fry CPU
-        GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.FALLING)
+        # GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.FALLING)
 
         # use polling to check if door is open 10x to ensure falling edge was not an accident
         times_detected_true = 0
         while times_detected_true < 10:
+            time.sleep(0.3)
             if IsDoorOpen():
                 times_detected_true += 1
-                time.sleep(0.2)
             else:
                 times_detected_true = 0 
     
@@ -69,30 +79,24 @@ def WaitForDoorToClose():
     
     while True:
         # use interrupt not to fry CPU
-        GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.RISING)
+        # GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.RISING)
 
         # use polling to check if door is open 10x to ensure falling edge was not an accident
         times_detected_true = 0
         while times_detected_true < 10:
+            time.sleep(0.3)
             if IsDoorClosed():
                 times_detected_true += 1
-                time.sleep(0.2)
             else:
                 times_detected_true = 0 
     
         return True
-    
-
-who_unlocked_the_door = ''
-time_of_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 def LockDoorEvery60Sec():
-    print("[DOOR] attempting to lock")
-    if IsDoorClosed():
+    colors.print_color("[LOCKED] Security Measure - Attempting to lock drawer every 60 seconds.", "warning")
+    if IsDoorClosed() and time.time() > 60 + time_of_last_unlock:
         LockDoor()
-        print("[DOOR] Door locked")
 
-    threading.Timer(10.0, LockDoorEvery60Sec).start()
+    threading.Timer(60.0, LockDoorEvery60Sec).start()
 
 LockDoorEvery60Sec()
-    
