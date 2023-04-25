@@ -6,6 +6,7 @@ import GPIO as gpio
 import colors
 
 # A. one instance, used everywhere
+cabinet_id = -1
 reader = None
 db = None
 authorized_personnel = []
@@ -22,12 +23,13 @@ def get_authorized_personnel():
     global authorized_personnel
     global thread1
     
-    res = db.table('cabinet').select('authorized_personnel').neq('authorized_personnel', None).execute()
+    res = db.table('cabinet').select('authorized_personnel').eq('cabinet_id', cabinet_id).neq('authorized_personnel', None).execute()
+
     fetched_authorized_personnel = list(map(lambda d: d['authorized_personnel'], res.data))
     
     if set(authorized_personnel) != set(fetched_authorized_personnel):
         authorized_personnel = fetched_authorized_personnel
-        print("[AUSER] Personnel authorized to open this cabinet have IDs: ", authorized_personnel)    
+        print("[AUSER] Personnel authorized to open Cabinet %u have IDs: " % cabinet_id, authorized_personnel)    
  
     if thread1 != None:
         thread1.cancel()
@@ -43,7 +45,7 @@ def get_remote_unlock_events():
     global thread2
     global num_of_remote_unlock_events
     
-    res = db.table("events").select("*").eq("event", "remote_unlock").execute()
+    res = db.table("events").select("*").eq('cabinet_id', cabinet_id).eq("event", "remote_unlock").execute()
        
     num_found = len(res.data)
     

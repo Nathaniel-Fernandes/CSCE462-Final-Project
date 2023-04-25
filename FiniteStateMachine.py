@@ -20,7 +20,7 @@ INSTRUCTIONS = Enum("INSTRUCTIONS", [
     "check_if_door_is_closed", 
     "send_drawer_closed_status_event", "send_drawer_opened_status_event",
     "check_if_scanned", "run_scan",
-    "check_for_authorized_access_card", "unlock_door", "send_drawer_unlocked_status_event", "lock_door",  # new
+    "check_for_authorized_access_card", "unlock_door", "send_drawer_unlocked_status_event", "lock_door"
 ])
 
 CABINET_STATE = {
@@ -160,7 +160,7 @@ def execute(instruction: str, execution_context: str):
                 # TODO: could extract this if wanted
                 res = gb.db.table('events').insert({
                     "event": "drawer_open",
-                    "cabinet_id": 1,
+                    "cabinet_id": gb.cabinet_id,
                 }).execute()
 
                 colors.print_color("[RESPO] Inserted drawer open event successfully.", "success")
@@ -176,7 +176,7 @@ def execute(instruction: str, execution_context: str):
                 # TODO: might be extracted to helper function
                 res = gb.db.table('events').insert({
                     "event": "drawer_close",
-                    "cabinet_id": 1,
+                    "cabinet_id": gb.cabinet_id,
                 }).execute()
                 
                 colors.print_color("[RESPO] Inserted drawer closed status event successfully.", "success")
@@ -240,7 +240,7 @@ def execute(instruction: str, execution_context: str):
                 # TODO: might be extracted to helper function
                 res = gb.db.table('events').insert({
                     "event": "drawer_unlocked",
-                    "cabinet_id": 1,
+                    "cabinet_id": gb.cabinet_id,
                     "user": gpio.who_unlocked_the_door
                 }).execute()
                 

@@ -52,16 +52,13 @@ def UnlockDoor():
     global time_of_last_unlock
     time_of_last_unlock = time.time()
     GPIO.output(LOCK_OUTPUT, GPIO.LOW)
-    colors.print_color("[UNLOCK] Drawer unlocked successfully.", "success")
+    colors.print_color("[UNLOCK] Drawer unlocked successfully at %.2f" % time_of_last_unlock, "success")
 
 def WaitForDoorToOpen():
     if IsDoorOpen():
         return True
     
     while True:
-        # use interrupt not to fry CPU
-        # GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.FALLING)
-
         # use polling to check if door is open 10x to ensure falling edge was not an accident
         times_detected_true = 0
         while times_detected_true < 10:
@@ -78,9 +75,6 @@ def WaitForDoorToClose():
         return True
     
     while True:
-        # use interrupt not to fry CPU
-        # GPIO.wait_for_edge(DOOR_CIRCUIT, GPIO.RISING)
-
         # use polling to check if door is open 10x to ensure falling edge was not an accident
         times_detected_true = 0
         while times_detected_true < 10:
@@ -92,11 +86,18 @@ def WaitForDoorToClose():
     
         return True
 
+thread = None
 def LockDoorEvery60Sec():
+    global thread
+    
     colors.print_color("[LOCKED] Security Measure - Attempting to lock drawer every 60 seconds.", "warning")
     if IsDoorClosed() and time.time() > 60 + time_of_last_unlock:
         LockDoor()
 
-    threading.Timer(60.0, LockDoorEvery60Sec).start()
+    if thread != None:
+        thread.cancel()
+
+    thread = threading.Timer(60.0, LockDoorEvery60Sec).start()
+    
 
 LockDoorEvery60Sec()

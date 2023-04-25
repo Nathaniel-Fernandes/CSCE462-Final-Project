@@ -69,7 +69,8 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
             res = gb.db.table('events').insert({
                 "event": "scan_result",
                 "cabinet_id": 1,
-                "scan_result": json.dumps(tags)
+                "scan_result": json.dumps(tags),
+                "cabinet_id": gb.cabinet_id
             }).execute()
             
             colors.print_color("[RESPONSE] Successfully inserted tags into database", "success")
