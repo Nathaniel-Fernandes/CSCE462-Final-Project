@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client 
+import twilio
 import threading
 import GPIO as gpio
 import colors
@@ -10,9 +11,7 @@ cabinet_id = -1
 reader = None
 db = None
 authorized_personnel = []
-
-res = db.table('users').select('uuid').neq('uuid', None).execute()
-all_personnel = list(map(lambda d: d['uuid'], res.data))
+all_personnel = []
 
 # B. open connection to database
 load_dotenv()
@@ -20,11 +19,24 @@ url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 db: Client = create_client(url, key)
 
-plivo_auth_id = os.environ.get("PLIVO_AUTH_ID")
-plivo_auth_token = os.environ.get("PLIVO_AUTH_TOKEN")
-manager_number = db.table('users').select('phone_number').eq('role', 'admin')
+# C. Set up phone number
+account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+client = twilio.rest.Client(account_sid, auth_token)
+
+manager_number = None
+try:
+    res = db.table('users').select('phone_number').eq('role', 'admin').execute()
+    manager_number = res.data[0]["phone_number"]
+    colors.print_color("Manager's number on file is %s" % manager_number, "warning")
+
+except BaseException as e:
+    colors.print_color("[ERROR] Could not retrieve managers' number: %s." % str(e), "error")
 
 # C1. Get authorized personnel
+res = db.table('users').select('uuid').neq('uuid', None).execute()
+all_personnel = list(map(lambda d: d['uuid'], res.data))
+
 thread1 = None
 def get_authorized_personnel():
     global authorized_personnel

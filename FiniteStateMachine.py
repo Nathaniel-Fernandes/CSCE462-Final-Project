@@ -224,7 +224,7 @@ def execute(instruction: str, execution_context: str):
         
             else:
                 detected_epcs = set(list(map(lambda x: x["EPC"], tags)))
-                is_a_human_badge = set(gb.all_personnel).intersection(detected_epcs)
+                is_a_human_badge = list(set(gb.all_personnel).intersection(detected_epcs))
                 matches = set(gb.authorized_personnel).intersection(detected_epcs)
             
                 if len(is_a_human_badge) > 0:

@@ -4,7 +4,6 @@ import json
 import time
 import signal
 from typing import Tuple
-import plivo
 import globals as gb
 import colors
 
@@ -14,7 +13,7 @@ class TimeoutException(Exception):
 def timeout_handler(signum, frame):
     raise TimeoutException
 
-signal.signal(signal.SIGALRM, timeout_handler)
+# signal.signal(signal.SIGALRM, timeout_handler)
 
 def SetupReader():
     # load the library
@@ -22,11 +21,12 @@ def SetupReader():
     ver = f.LibVersion()
 
     # if it takes longer than 10 sec, something is wrong.
-    signal.alarm(10)
+    # signal.alarm(10)
 
     # Get & Connect to a port
     ports = f.AvailablePorts()
-    f.OpenPort(ports[0], 57600)
+    f.OpenPort(ports[1], 57600) # 4 windows
+    # f.OpenPort(ports[0], 57600) # 4 pi
     
     # Log data about reader for debugging purposes
     colors.print_color("[READER] Lib Version: %s" % ver, "log")
@@ -35,7 +35,7 @@ def SetupReader():
     reader_info = f.LoadSettings()
     reader_info.echo()
     
-    signal.alarm(0)
+    # signal.alarm(0)
 
     return f
 
@@ -82,10 +82,16 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
     return n, tags
 
 def SendWarningMessage(id="UNKNOWN"):
-    client = plivo.RestClient(gb.plivo_auth_id, gb.plivo_auth_token)
-    client.messages.create(
-        src="+19792053362",
-        dst=gb.manager_number,
-        cabinet_id= gb.cabinet_id,
-        personnel_id=id
-    )
+
+    if gb.manager_number != None:
+        message = gb.client.messages \
+                .create(
+                     body="Unauthorized access attempt to Cabinet %s. Likely suspect: %s. Please check immediately." % (gb.cabinet_id, id),
+                     from_='+18883035570',
+                     to=gb.manager_number
+                 )
+        
+        colors.print_color("[SUCCESS] Message sent successfully.", "success")
+
+    else:
+        colors.print_color("[ERROR] Could not load manager's number.", "error")
