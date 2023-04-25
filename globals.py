@@ -11,20 +11,26 @@ reader = None
 db = None
 authorized_personnel = []
 
+res = db.table('users').select('uuid').neq('uuid', None).execute()
+all_personnel = list(map(lambda d: d['uuid'], res.data))
+
 # B. open connection to database
 load_dotenv()
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
 db: Client = create_client(url, key)
 
+plivo_auth_id = os.environ.get("PLIVO_AUTH_ID")
+plivo_auth_token = os.environ.get("PLIVO_AUTH_TOKEN")
+manager_number = db.table('users').select('phone_number').eq('role', 'admin')
+
 # C1. Get authorized personnel
 thread1 = None
 def get_authorized_personnel():
     global authorized_personnel
-    global thread1
-    
-    res = db.table('cabinet').select('authorized_personnel').eq('cabinet_id', cabinet_id).neq('authorized_personnel', None).execute()
+    global thread1    
 
+    res = db.table('cabinet').select('authorized_personnel').eq('cabinet_id', cabinet_id).neq('authorized_personnel', None).execute()
     fetched_authorized_personnel = list(map(lambda d: d['authorized_personnel'], res.data))
     
     if set(authorized_personnel) != set(fetched_authorized_personnel):

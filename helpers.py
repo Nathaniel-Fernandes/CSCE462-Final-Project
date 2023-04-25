@@ -4,6 +4,7 @@ import json
 import time
 import signal
 from typing import Tuple
+import plivo
 import globals as gb
 import colors
 
@@ -80,3 +81,11 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
         
     return n, tags
 
+def SendWarningMessage(id="UNKNOWN"):
+    client = plivo.RestClient(gb.plivo_auth_id, gb.plivo_auth_token)
+    client.messages.create(
+        src="+19792053362",
+        dst=gb.manager_number,
+        cabinet_id= gb.cabinet_id,
+        personnel_id=id
+    )

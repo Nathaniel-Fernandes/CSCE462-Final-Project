@@ -115,6 +115,10 @@ def execute(instruction: str, execution_context: str):
 
     global has_scanned
 
+    # assumes the door cannot lock when the door is open
+    if gpio.IsDoorLocked() and gpio.IsDoorOpen():
+        helpers.SendWarningMessage()
+
     if instruction == INSTRUCTIONS.reset_values:
         try:
             has_scanned = False
@@ -219,13 +223,18 @@ def execute(instruction: str, execution_context: str):
                 return STATES.reset, CONDITIONS.immediate, None, 0
         
             else:
-                detected_epcs = list(map(lambda x: x["EPC"], tags))
-                matches = set(gb.authorized_personnel).intersection(set(detected_epcs))
+                detected_epcs = set(list(map(lambda x: x["EPC"], tags)))
+                is_a_human_badge = set(gb.all_personnel).intersection(detected_epcs)
+                matches = set(gb.authorized_personnel).intersection(detected_epcs)
             
-                if (len(matches) > 0):
-                    gpio.who_unlocked_the_door = list(matches)[0]
-                    colors.print_color("[AUSER] Authorized user who opened door: %s" % gpio.who_unlocked_the_door, "blue")
-                    break
+                if len(is_a_human_badge) > 0:
+                    if (len(matches) > 0):
+                        gpio.who_unlocked_the_door = list(matches)[0]
+                        colors.print_color("[AUSER] Authorized user who opened door: %s" % gpio.who_unlocked_the_door, "blue")
+                        break
+
+                    else:
+                        helpers.SendWarningMessage(is_a_human_badge[0])
 
         return STATES.drawer_unlocked, CONDITIONS.immediate, None, 0
 
