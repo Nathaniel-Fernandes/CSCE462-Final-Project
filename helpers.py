@@ -13,7 +13,7 @@ class TimeoutException(Exception):
 def timeout_handler(signum, frame):
     raise TimeoutException
 
-# signal.signal(signal.SIGALRM, timeout_handler)
+signal.signal(signal.SIGALRM, timeout_handler)
 
 def SetupReader():
     # load the library
@@ -21,12 +21,12 @@ def SetupReader():
     ver = f.LibVersion()
 
     # if it takes longer than 10 sec, something is wrong.
-    # signal.alarm(10)
+    signal.alarm(10)
 
     # Get & Connect to a port
     ports = f.AvailablePorts()
-    f.OpenPort(ports[1], 57600) # 4 windows
-    # f.OpenPort(ports[0], 57600) # 4 pi
+    # f.OpenPort(ports[1], 57600) # 4 windows
+    f.OpenPort(ports[0], 57600) # 4 pi
     
     # Log data about reader for debugging purposes
     colors.print_color("[READER] Lib Version: %s" % ver, "log")
@@ -35,7 +35,7 @@ def SetupReader():
     reader_info = f.LoadSettings()
     reader_info.echo()
     
-    # signal.alarm(0)
+    signal.alarm(0)
 
     return f
 

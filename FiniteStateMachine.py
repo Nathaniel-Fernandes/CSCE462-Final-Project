@@ -145,7 +145,6 @@ def execute(instruction: str, execution_context: str):
 
     elif instruction == INSTRUCTIONS.check_if_door_is_closed:
         # if true, the door started OPEN not closed
-        # if (bool(input("Enter if door is open: (hit enter for door closed)"))):
         if gpio.IsDoorOpen():
             return STATES.drawer_open, CONDITIONS.immediate, EXECUTION_CONTEXT.suppress_sending_event_messages, 0
         

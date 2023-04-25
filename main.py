@@ -5,6 +5,9 @@ import GPIO as gpio
 import colors
 
 def main():   
+    if len(sys.argv) < 2:
+        raise RuntimeError("Must input the cabinet id")
+    
     # set global cabinet id
     gb.cabinet_id = sys.argv[1]
 
