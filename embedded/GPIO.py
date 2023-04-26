@@ -17,13 +17,13 @@ DOOR_CIRCUIT = 15
 
 GPIO.setup(LOCK_OUTPUT, GPIO.OUT) # uncomment 4 pi
 GPIO.setup(LOCK_INPUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # uncomment 4 pi
-GPIO.setup(DOOR_CIRCUIT, GPIO.IN, pulsl_up_down=GPIO.PUD_DOWN) # uncomment 4 pi
+GPIO.setup(DOOR_CIRCUIT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # uncomment 4 pi
 
 # GETTERS
-def IsDoorLocked() -> bool:
+def IsDoorUnlocked() -> bool:
     '''
-        0 -> electromagnet off -> door unlocked -> false == bool(0)
-        1 -> electromagnet on -> door locked -> true == bool(1)
+        0 -> electromagnet off -> door locked -> false == bool(0)
+        1 -> electromagnet on -> door unlocked -> true == bool(1)
     '''
     val = bool(GPIO.input(LOCK_INPUT)) # uncomment 4 pi
     # val = bool(input("Is door locked? <enter> = unlocked, y = locked")) # 4 windows
@@ -48,13 +48,13 @@ def ClosePins():
     # pass # 4 windows
     
 def LockDoor():
-    GPIO.output(LOCK_OUTPUT, GPIO.HIGH) # 4 pi
+    GPIO.output(LOCK_OUTPUT, GPIO.LOW) # 4 pi
     colors.print_color("[LOCKED] Drawer locked successfully.", "success")
 
 def UnlockDoor():
     global time_of_last_unlock
     time_of_last_unlock = time.time()
-    GPIO.output(LOCK_OUTPUT, GPIO.LOW) # 4 pi
+    GPIO.output(LOCK_OUTPUT, GPIO.HIGH) # 4 pi
     colors.print_color("[UNLOCK] Drawer unlocked successfully at %.2f" % time_of_last_unlock, "success")
 
 def WaitForDoorToOpen():

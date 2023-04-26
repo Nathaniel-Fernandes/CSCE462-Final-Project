@@ -310,7 +310,7 @@ class J4210():
             self.lib = cdll.LoadLibrary('j4210u.dll')
             print("loaded dll")
         elif (platform.system() == 'Linux'):
-            self.lib = cdll.LoadLibrary('/home/pi/src/lib/libj4210u.so')
+            self.lib = cdll.LoadLibrary('/home/pi/src/embedded/lib/libj4210u.so')
         elif (platform.system() == 'Mac OS X'):
             self.lib = cdll.LoadLibrary('libj4210u.dylib')
         lib = self.lib # TODO: this line seems extraneous

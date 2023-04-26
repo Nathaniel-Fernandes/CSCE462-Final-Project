@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from supabase import create_client, Client 
-import twilio
+from twilio.rest import Client as TwilioRestClient
 import threading
 import GPIO as gpio
 import colors
@@ -22,7 +22,7 @@ db: Client = create_client(url, key)
 # C. Set up phone number
 account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
 auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
-client = twilio.rest.Client(account_sid, auth_token)
+client = TwilioRestClient(account_sid, auth_token)
 
 manager_number = None
 try:
