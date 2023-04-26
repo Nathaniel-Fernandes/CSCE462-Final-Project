@@ -1,43 +1,4 @@
 "use strict";
-/*
-
-
-
-1. USER
-POST
-    - create user
-        * profile pic
-        * salary
-        * ...
-
-PUT
-    - update user
-        * ...
-
-GET
-    - select all
-
-2. Cabinet
-POST
-    - Remote unlock (adds new status event)
-    - update Authorized users (update where cabinet_id = &) =>
-        - either add permissions OR
-        - take them away
-
-GET
-    -
-
-- see authorized users (get request)
-- update authorized users
-
-- remote unlock
-
--
-
-History of who's taken what
-
-
-*/
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -55,6 +16,7 @@ const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const bodyParser = require("body-parser");
 const supabase_js_1 = require("@supabase/supabase-js");
+const cors = require("cors");
 /*
  #####################################
  ############# CONFIG ################
@@ -64,9 +26,18 @@ dotenv_1.default.config();
 const db = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 const app = (0, express_1.default)();
 app.use(bodyParser.json());
+app.use(cors());
 // User
-app.post("/user/create", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/users", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { error, data } = yield db.from("Users").select("*");
+    if (error)
+        res.send(error), console.log(error);
+    else
+        res.send(data);
+}));
+app.post("/users/create", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     let user = req.body;
+    console.log(user);
     const { error } = yield db.from("Users").insert({
         uuid: user.uuid,
         first_name: user === null || user === void 0 ? void 0 : user.first_name,
@@ -149,6 +120,13 @@ app.post("/remote-unlock/", (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 }));
 // Item Types
+app.get("/item-types", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { error, data } = yield db.from("ItemTypes").select("*");
+    if (error)
+        res.send(error), console.log(error);
+    else
+        res.send(data);
+}));
 app.post("/item-types/create", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { error } = yield db.from("ItemTypes").insert({
         name: req.body.name
@@ -172,6 +150,13 @@ app.post("/item-types/delete", (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 }));
 // Items
+app.get("/items", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { error, data } = yield db.from("Items").select("*");
+    if (error)
+        res.send(error), console.log(error);
+    else
+        res.send(data);
+}));
 app.post("/items/create", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c;
     const { error } = yield db.from("Items").insert({
@@ -225,5 +210,44 @@ Permissions
 
 Users
     - uuid
+
+*/
+/*
+
+
+
+1. USER
+POST
+    - create user
+        * profile pic
+        * salary
+        * ...
+
+PUT
+    - update user
+        * ...
+
+GET
+    - select all
+
+2. Cabinet
+POST
+    - Remote unlock (adds new status event)
+    - update Authorized users (update where cabinet_id = &) =>
+        - either add permissions OR
+        - take them away
+
+GET
+    -
+
+- see authorized users (get request)
+- update authorized users
+
+- remote unlock
+
+-
+
+History of who's taken what
+
 
 */ 

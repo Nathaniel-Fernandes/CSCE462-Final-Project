@@ -1,47 +1,8 @@
-/*
-
-
-
-1. USER
-POST
-    - create user
-        * profile pic
-        * salary
-        * ...
-
-PUT
-    - update user
-        * ...
-
-GET
-    - select all
-
-2. Cabinet
-POST
-    - Remote unlock (adds new status event)
-    - update Authorized users (update where cabinet_id = &) =>
-        - either add permissions OR 
-        - take them away
-
-GET
-    - 
-
-- see authorized users (get request)
-- update authorized users
-
-- remote unlock
-
-- 
-
-History of who's taken what
-
-
-*/
-
 import express, { Express, Request, Response } from 'express';
 import dotenv from 'dotenv';
 const bodyParser = require("body-parser");
 import { createClient } from '@supabase/supabase-js'
+const cors = require("cors");
 
 /*
  #####################################
@@ -55,6 +16,7 @@ const db = createClient(process.env.SUPABASE_URL as string, process.env.SUPABASE
 
 const app: Express = express();
 app.use(bodyParser.json());
+app.use(cors())
 
 
 /*
@@ -66,18 +28,27 @@ app.use(bodyParser.json());
 interface User {
     first_name: string,
     last_name: string,
-    dob: Date, // date 
+    dob: string, // YYYY-MM-DD
     uuid: string,
-    start_date: Date, // date
-    role: string, // varchar
+    start_date: string, // YYYY-MM-DD
+    role: string,
     department: string,
     salary: number,
     phone_number: string
 }
 
 // User
-app.post("/user/create", async (req: Request, res: Response) => {
+app.get("/users", async (req: Request, res: Response) => {
+    const { error, data } = await db.from("Users").select("*")
+
+    if (error) res.send(error), console.log(error);
+    else   res.send(data)
+})
+
+app.post("/users/create", async (req: Request, res: Response) => {
     let user = req.body as User
+
+    console.log(user)
 
     const { error } = await db.from("Users").insert({
         uuid: user.uuid,
@@ -176,6 +147,13 @@ app.post("/remote-unlock/", async (req: Request, res: Response) => {
 })
 
 // Item Types
+app.get("/item-types", async (req: Request, res: Response) => {
+    const { error, data } = await db.from("ItemTypes").select("*")
+
+    if (error) res.send(error), console.log(error);
+    else   res.send(data)
+})
+
 app.post("/item-types/create", async (req: Request, res: Response) => {
     const { error } = await db.from("ItemTypes").insert({
         name: req.body.name
@@ -203,6 +181,13 @@ app.post("/item-types/delete", async (req: Request, res: Response) => {
 })
 
 // Items
+app.get("/items", async (req: Request, res: Response) => {
+    const { error, data } = await db.from("Items").select("*")
+
+    if (error) res.send(error), console.log(error);
+    else   res.send(data)
+})
+
 app.post("/items/create", async (req: Request, res: Response) => {
     const { error } = await db.from("Items").insert({
         name: req.body.name,
@@ -263,5 +248,45 @@ Permissions
 
 Users
     - uuid
+
+*/
+
+/*
+
+
+
+1. USER
+POST
+    - create user
+        * profile pic
+        * salary
+        * ...
+
+PUT
+    - update user
+        * ...
+
+GET
+    - select all
+
+2. Cabinet
+POST
+    - Remote unlock (adds new status event)
+    - update Authorized users (update where cabinet_id = &) =>
+        - either add permissions OR 
+        - take them away
+
+GET
+    - 
+
+- see authorized users (get request)
+- update authorized users
+
+- remote unlock
+
+- 
+
+History of who's taken what
+
 
 */
