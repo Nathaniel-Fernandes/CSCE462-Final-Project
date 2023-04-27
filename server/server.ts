@@ -129,8 +129,17 @@ app.post("/permissions/delete", async (req: Request, res: Response) => {
     }
 })
 
+app.get("/permissions", async (req: Request, res: Response) => {
+    const { error, data } = await db.from("Permissions").select("*")
+
+    if (error) res.send(error), console.log(error);
+    else   res.send(data)
+})
+
 // Status Events
 app.post("/remote-unlock/", async (req: Request, res: Response) => {
+    console.log(req)
+
     const { error } = await db.from("Events").insert({
         event: "remote_unlock",
         cabinet_id: req.body.cabinet_id,
@@ -146,7 +155,21 @@ app.post("/remote-unlock/", async (req: Request, res: Response) => {
     }
 })
 
+app.get("/status-events", async (req: Request, res: Response) => {
+    const { error, data } = await db.from("Events").select("*").order('id', { ascending: false })
+
+    if (error) res.send(error), console.log(error);
+    else   res.send(data)
+})
+
 // Item Types
+app.get("/cabinets", async (req: Request, res: Response) => {
+    const { error, data } = await db.from("Cabinets").select("*")
+
+    if (error) res.send(error), console.log(error);
+    else   res.send(data)
+})
+
 app.get("/item-types", async (req: Request, res: Response) => {
     const { error, data } = await db.from("ItemTypes").select("*")
 
@@ -193,7 +216,8 @@ app.post("/items/create", async (req: Request, res: Response) => {
         name: req.body.name,
         type: req.body?.type,
         expiration: req.body?.expiration,
-        uuid: req.body?.uuid
+        uuid: req.body?.uuid,
+        image: req.body?.image
     })
 
     if (error) {
@@ -206,7 +230,8 @@ app.post("/items/create", async (req: Request, res: Response) => {
 })
 
 app.post("/items/delete", async (req: Request, res: Response) => {
-    const { error } = await db.from("Items").delete().eq("id", req.body.id)
+    console.log(req)
+    const { error } = await db.from("Items").delete().eq("uuid", req.body?.uuid).eq("name", req.body?.name)
 
     if (error) {
         console.log(error)

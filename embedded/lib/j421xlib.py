@@ -306,7 +306,8 @@ class J4210():
         # load the library
         self.lib = None
         if (platform.system() == 'Windows'):
-            os.add_dll_directory("C:\\Users\\njfer\\OneDrive\\Documents\\Top Level\\TAMU\\2022-2023\\Spring 2023\\CSCE 462\\FinalProject\\src\\lib")
+            os.add_dll_directory("C:\\Users\\njfer\\OneDrive\\Documents\\Top Level\\TAMU\\2022-2023\\Spring 2023\\CSCE 462\\FinalProject\\src\\embedded\\lib")
+            # os.add_dll_directory("C:\\Users\\njfer\\OneDrive\\Documents\\Top Level\\TAMU\\2022-2023\\Spring 2023\\CSCE 462\\FinalProject\\embedded\\src\\lib")
             self.lib = cdll.LoadLibrary('j4210u.dll')
             print("loaded dll")
         elif (platform.system() == 'Linux'):

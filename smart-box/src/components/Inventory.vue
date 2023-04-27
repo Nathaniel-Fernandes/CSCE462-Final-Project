@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { reactive, onMounted, ref, computed, watch } from 'vue';
-import { fetchItemTypes, fetchItems, createItemType, deleteItemType, createItem } from '../../services/fetch.ts'
-import type { Item } from 'services/types';
-// import TableLite from "vue3-table-lite/ts"; 
+import { onMounted, ref, computed, watch, onBeforeUnmount } from 'vue';
+import type { Ref } from 'vue'
+import { fetchItemTypes, fetchItems, createItemType, deleteItemType, createItem, deleteItem } from '../../services/fetch.ts'
+import type { Item, ItemType } from 'services/types';
 import EasyDataTable from "vue3-easy-data-table"
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { supabase } from '@/main';
 
 let itemTypesState: any = ref(new Array());
 let items: any = ref(new Array())
@@ -13,16 +15,16 @@ const selectedItemType = ref('')
 
 const name = ref('')
 const expiration = ref('') // YYYY-MM-DD
+const imagelink = ref('') // YYYY-MM-DD
 const uuid = ref('')
 const itemType = ref('')
 
 const headers = [
     {
       text: 'Name',
-    //   filterable: false,
-    //   field: 'name',
       value: 'name', 
     },
+    { text: 'Image', sortable: true, value: 'image' },
     { text: 'UUID', sortable: true, value: 'uuid' },
     { text: 'Expiration', sortable: true, value: 'expiration' },
     { text: 'Type', sortable: true, value: 'type' },
@@ -39,6 +41,9 @@ const itemTypes = computed(() => {
 onMounted(async () => {
     await getItemTypes()
     await getItems();
+
+    subscribeItemTypes();
+    subscribeItems();
 });
 
 const getItemTypes = async () => {
@@ -51,6 +56,52 @@ const getItemTypes = async () => {
     }
 }
 
+let rtchannel1: Ref<RealtimeChannel|undefined> = ref(undefined)
+let rtchannel2: Ref<RealtimeChannel|undefined> = ref(undefined)
+
+const subscribeItemTypes = () => {
+  rtchannel1.value = supabase
+    .channel('fetch-item-types')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ItemTypes' }, payload => {
+      console.log('Change received!', payload)
+      try {
+        itemTypesState.value = [...itemTypesState.value.filter((e: ItemType) => e.id !== (payload.old as ItemType).id), (payload.new as ItemType)]
+      }
+      catch(e) {
+        console.log(e)
+      }
+    })
+    .subscribe()
+
+    console.log(rtchannel1.value)
+}
+
+const subscribeItems = () => {
+  rtchannel2.value = supabase
+    .channel('get-items')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'Items' }, payload => {
+      console.log('Change received!', payload)
+      try {
+        items.value = [...items.value.filter((e: Item) => e.id !== (payload.old as Item).id), (payload.new as Item)]
+      }
+      catch(e) {
+        console.log(e)
+      }
+    })
+    .subscribe()
+}
+
+onBeforeUnmount(async () => {
+  if (rtchannel1 != undefined) {
+      const result = await supabase.removeChannel(rtchannel1.value as RealtimeChannel)
+      console.log(result)
+  }
+  if (rtchannel2 != undefined) {
+      const result = await supabase.removeChannel(rtchannel2.value as RealtimeChannel)
+      console.log(result)
+  }
+})
+
 const getItems = async () => {
     try {
         let response = await fetchItems();
@@ -61,16 +112,23 @@ const getItems = async () => {
     }
 }
 
-const submitForm = () => {
+const submitForm = (action: string) => {
     const data = {
         name: name.value,
         expiration: expiration.value, // YYYY-MM-DD
         uuid: uuid.value,
-        type: itemType.value
+        type: itemType.value,
+        image: imagelink.value
     }
 
     let processedData = Object.entries(data).filter(([key, value]) => value !== '').reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-    createItem(processedData as Item)
+    
+    if (action == "create") {
+      createItem(processedData as Item)
+    }
+    else if (action == "delete") {
+      deleteItem(processedData as Item)
+    }
 }
 </script>
 
@@ -78,7 +136,7 @@ const submitForm = () => {
   <div>
     <div>
         <h3 class="mt-md bold">4. Create/Delete An Item Type</h3>
-        <input type="text" v-model="enteredItemTypeName">
+        <input type="text" v-model="enteredItemTypeName" />
         <button class="ms-md" @click="createItemType(enteredItemTypeName)">Create</button>
         <button class="red" @click="deleteItemType(enteredItemTypeName)">Delete</button>
     </div>
@@ -94,6 +152,10 @@ const submitForm = () => {
           <span>
             <label for="uuid">UUID</label>
             <input id="uuid" placeholder="EPC Code" v-model="uuid" />
+          </span>
+          <span>
+            <label for="imagelink">Image</label>
+            <input id="imagelink" placeholder="" v-model="imagelink" />
           </span>
         </div>
 
@@ -111,7 +173,10 @@ const submitForm = () => {
           </span>
         </div>
 
-        <button class="mt-sm" @click="submitForm()">Create Item</button>
+        <div>
+          <button class="mt-sm create-item" @click="submitForm('create')">Create Item</button>
+          <button class="mt-sm delete-item red" @click="submitForm('delete')">Delete Item</button>
+        </div>
       </div>
     </div>
 
@@ -127,8 +192,11 @@ const submitForm = () => {
         <h3 class="mt-md bold">7. View Inventory</h3>
         <EasyDataTable
             :headers="headers"
-            :items="items"
-        />
+            :items="items">
+            <template #item-image="{ image }">
+                <img class="avator" :src="image" alt=""/>
+            </template>
+        </EasyDataTable>
     </div>
 
     
@@ -202,8 +270,26 @@ hr {
     width: 100%
 }
 
+.vue3-easy-data-table tr {
+  border-bottom: 1px solid white;
+  margin: 10px;
+  height: 50px;
+}
+
+td {
+  vertical-align: middle;
+}
+
 .pagination__rows-per-page {
     display: none;
+}
+
+img {
+  width: 50px;
+}
+
+.create-item {
+  align-self: start;
 }
 
 </style>

@@ -104,8 +104,16 @@ app.post("/permissions/delete", (req, res) => __awaiter(void 0, void 0, void 0, 
         res.send(201);
     }
 }));
+app.get("/permissions", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { error, data } = yield db.from("Permissions").select("*");
+    if (error)
+        res.send(error), console.log(error);
+    else
+        res.send(data);
+}));
 // Status Events
 app.post("/remote-unlock/", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log(req);
     const { error } = yield db.from("Events").insert({
         event: "remote_unlock",
         cabinet_id: req.body.cabinet_id,
@@ -119,7 +127,21 @@ app.post("/remote-unlock/", (req, res) => __awaiter(void 0, void 0, void 0, func
         res.send(201);
     }
 }));
+app.get("/status-events", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { error, data } = yield db.from("Events").select("*").order('id', { ascending: false });
+    if (error)
+        res.send(error), console.log(error);
+    else
+        res.send(data);
+}));
 // Item Types
+app.get("/cabinets", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { error, data } = yield db.from("Cabinets").select("*");
+    if (error)
+        res.send(error), console.log(error);
+    else
+        res.send(data);
+}));
 app.get("/item-types", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { error, data } = yield db.from("ItemTypes").select("*");
     if (error)
@@ -158,12 +180,13 @@ app.get("/items", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         res.send(data);
 }));
 app.post("/items/create", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     const { error } = yield db.from("Items").insert({
         name: req.body.name,
         type: (_a = req.body) === null || _a === void 0 ? void 0 : _a.type,
         expiration: (_b = req.body) === null || _b === void 0 ? void 0 : _b.expiration,
-        uuid: (_c = req.body) === null || _c === void 0 ? void 0 : _c.uuid
+        uuid: (_c = req.body) === null || _c === void 0 ? void 0 : _c.uuid,
+        image: (_d = req.body) === null || _d === void 0 ? void 0 : _d.image
     });
     if (error) {
         console.log(error);
@@ -174,7 +197,9 @@ app.post("/items/create", (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 }));
 app.post("/items/delete", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { error } = yield db.from("Items").delete().eq("id", req.body.id);
+    var _e, _f;
+    console.log(req);
+    const { error } = yield db.from("Items").delete().eq("uuid", (_e = req.body) === null || _e === void 0 ? void 0 : _e.uuid).eq("name", (_f = req.body) === null || _f === void 0 ? void 0 : _f.name);
     if (error) {
         console.log(error);
         res.send(error);

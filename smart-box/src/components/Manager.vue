@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import { reactive, onMounted, ref, computed, watch } from 'vue';
+import { reactive, onMounted, ref, computed, watch, onBeforeUnmount } from 'vue';
+import type {  Ref } from 'vue'
 import { fetchUserData, updateAdminsNumber, updateUser, createUser } from '../../services/fetch.ts'
 import type { User } from 'services/types';
+import { supabase } from '@/main';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+
+let rtchannel: Ref<RealtimeChannel|undefined> = ref(undefined)
 
 let employees: any = ref(new Array());
 const enteredPhoneNumber = ref('')
@@ -21,12 +26,36 @@ onMounted(async () => {
   try {
     const response = await fetchUserData();
     employees.value = response
+
+    subscribeEmployees()
   }
   catch (e) {
     console.log(e);
   }
-
 });
+
+onBeforeUnmount(async () => {
+  if (rtchannel != undefined) {
+      const result = await supabase.removeChannel(rtchannel.value as RealtimeChannel)
+      console.log(result)
+  }
+})
+
+
+const subscribeEmployees = () => {
+  rtchannel.value = supabase
+    .channel('fetch-employees')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'Users' }, payload => {
+      console.log('Change received!', payload)
+      try {
+        employees.value = [...employees.value.filter((e: User) => e.id !== (payload.old as User).id), (payload.new as User)]
+      }
+      catch(e) {
+        console.log(e)
+      }
+    })
+    .subscribe()
+}
 
 const adminPhoneNumber = computed(() => {
   if (employees.value != null && employees.value.length > 0) {

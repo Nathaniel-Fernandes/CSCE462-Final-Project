@@ -86,6 +86,45 @@ export const updateAdminsNumber = async (phone_number: string) => {
     }
 };
 
+export const fetchCabinets = async () => {
+  const response = await fetch(domain + '/cabinets', {
+    method: 'GET'
+  })
+
+  console.log(response)
+  const data = await response.json();
+
+  console.log(data)
+
+  return data;
+}
+
+export const fetchStatusEvents = async () => {
+  const response = await fetch(domain + '/status-events', {
+    method: 'GET', 
+  })
+
+  console.log(response)
+  const data = await response.json();
+
+  console.log(data)
+
+  return data;
+}
+
+export const fetchPermissions = async () => {
+  const response = await fetch(domain + '/permissions', {
+    method: 'GET', 
+  })
+
+  console.log(response)
+  const data = await response.json();
+
+  console.log(data)
+
+  return data;
+}
+
 export const grantPermission = async (personnel_uuid: string, cabinet_id: string) => {
     const response = await fetch(domain + '/permissions/grant', {
       method: 'POST',
@@ -94,8 +133,14 @@ export const grantPermission = async (personnel_uuid: string, cabinet_id: string
       },
       body: JSON.stringify({ personnel_uuid, cabinet_id })
     });
-    const data = await response.json();
-    return data;
+    
+    if (response.ok) {
+      return true
+    }
+
+    else {
+      return response.status
+    }
 };
 
 export const deletePermission = async (personnel_uuid: string, cabinet_id: string) => {
@@ -106,20 +151,32 @@ export const deletePermission = async (personnel_uuid: string, cabinet_id: strin
       },
       body: JSON.stringify({ personnel_uuid, cabinet_id })
     });
-    const data = await response.json();
-    return data;
+
+    if (response.ok) {
+      return true
+    }
+
+    else {
+      return response.status
+    }
 };
 
 export const remoteUnlock = async (cabinet_id: string) => {
-    const response = await fetch(domain + '/permissions/delete', {
+    const response = await fetch(domain + '/remote-unlock', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ cabinet_id })
     });
-    const data = await response.json();
-    return data;
+
+    if (response.ok) {
+      return true
+    }
+
+    else {
+      return response.status
+    }
 };
 
 export const fetchItemTypes = async () => {
@@ -193,9 +250,14 @@ export const createItem = async (item: Item) => {
     };
   
     const response = await fetch(url, options);
-    const data = await response.json();
-  
-    return data;
+    
+    if (response.ok) {
+      return true
+    }
+
+    else {
+      return response.status
+    }
 };
 
 export const deleteItem = async (item: Item) => {
@@ -209,7 +271,12 @@ export const deleteItem = async (item: Item) => {
     };
   
     const response = await fetch(url, options);
-    const data = await response.json();
-  
-    return data;
+    
+    if (response.ok) {
+      return true
+    }
+
+    else {
+      return response.status
+    }
 };

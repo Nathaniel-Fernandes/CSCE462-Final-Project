@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Manager from './components/Manager.vue'
 import Inventory from './components/Inventory.vue';
+import Cabinets from './components/Cabinets.vue';
 
 // use some password protection lol
 // let password = "A+ project";
@@ -28,8 +29,10 @@ import Inventory from './components/Inventory.vue';
 
     <!-- <br /> -->
     <hr />
+
     <div>
-      <h2>Cabinet Details</h2>
+      <h2 class="bold">Cabinet Details</h2>
+      <Cabinets />
       <!-- 
         1. see all the cabinets
         2. see who has authorization to the cabinets
@@ -46,4 +49,8 @@ import Inventory from './components/Inventory.vue';
 </template>
 
 <style scoped>
+h2 {
+  font-size: 25px;
+  font-color: white;
+}
 </style>
