@@ -66,7 +66,7 @@ def LockDoor():
     colors.print_color("Turned motor on @ lock_high %d high" % LOCK_HIGH, "warning")
     time.sleep(25)
     GPIO.output(LOCK_HIGH, GPIO.LOW) # 4 pi
-    colors.print_color("Turned motor on @ lock_high %d low" % LOCK_OUTPUT, "warning")
+    colors.print_color("Turned motor on @ lock_high %d low" % LOCK_HIGH, "warning")
 
 
     # switch polarity
