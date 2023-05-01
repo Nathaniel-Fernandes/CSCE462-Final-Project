@@ -11,13 +11,13 @@ who_unlocked_the_door = ''
 time_of_last_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 # define pins
-LOCK_OUTPUT = 36
-LOCK_INPUT = 16
+LOCK_HIGH = 36
+LOCK_LOW = 16
 DOOR_CIRCUIT = 15
 
 def setup():
-    GPIO.setup(LOCK_OUTPUT, GPIO.OUT) # uncomment 4 pi
-    GPIO.setup(LOCK_INPUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # uncomment 4 pi
+    GPIO.setup(LOCK_HIGH, GPIO.OUT) # uncomment 4 pi
+    GPIO.setup(LOCK_LOW, GPIO.OUT) # uncomment 4 pi
     GPIO.setup(DOOR_CIRCUIT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # uncomment 4 pi
 
 setup()
@@ -29,7 +29,7 @@ def IsDoorUnlocked() -> bool:
         1 -> electromagnet on -> door unlocked -> true == bool(1)
     '''
     # val = bool(GPIO.input(LOCK_INPUT)) # uncomment 4 pi
-    val = LOCK_OUTPUT == 36
+    val = LOCK_HIGH == 36
     colors.print_color("[OUTPUT] Is door locked? %r" % (not bool(val)), "log")
 
     return val
@@ -55,32 +55,33 @@ def ClosePins():
     # pass # 4 windows
     
 def LockDoor():
-    global LOCK_OUTPUT
-    global LOCK_INPUT
+    global LOCK_HIGH
+    global LOCK_LOW
 
     if IsDoorLocked():
         return
     
-    GPIO.output(LOCK_OUTPUT, GPIO.HIGH) # 4 pi
-    colors.print_color("Turned motor on @ lock_output %d high" % LOCK_OUTPUT, "warning")
+    GPIO.output(LOCK_HIGH, GPIO.HIGH) # 4 pi
+    GPIO.output(LOCK_LOW, GPIO.LOW) # 4 pi
+    colors.print_color("Turned motor on @ lock_high %d high" % LOCK_HIGH, "warning")
     time.sleep(25)
-    GPIO.output(LOCK_OUTPUT, GPIO.LOW) # 4 pi
-    colors.print_color("Turned motor on @ lock_output %d low" % LOCK_OUTPUT, "warning")
+    GPIO.output(LOCK_HIGH, GPIO.LOW) # 4 pi
+    colors.print_color("Turned motor on @ lock_high %d low" % LOCK_OUTPUT, "warning")
 
 
     # switch polarity
-    temp = LOCK_OUTPUT
-    LOCK_OUTPUT = LOCK_INPUT
-    LOCK_INPUT = temp
-    colors.print_color("Switched polarity: lock_output %d lock_input %d" % (LOCK_OUTPUT, LOCK_INPUT), "warning")
+    temp = LOCK_HIGH
+    LOCK_HIGH = LOCK_LOW
+    LOCK_LOW = temp
+    colors.print_color("Switched polarity: lock_high %d lock_low %d" % (LOCK_HIGH, LOCK_LOW), "warning")
 
     setup()
 
     colors.print_color("[LOCKED] Drawer locked successfully.", "success")
 
 def UnlockDoor():
-    global LOCK_OUTPUT
-    global LOCK_INPUT
+    global LOCK_HIGH
+    global LOCK_LOW
 
     if IsDoorUnlocked():
         return
@@ -88,17 +89,18 @@ def UnlockDoor():
     global time_of_last_unlock
     time_of_last_unlock = time.time()
 
-    GPIO.output(LOCK_OUTPUT, GPIO.HIGH) # 4 pi
-    colors.print_color("Turned motor on @ lock_output %d high" % LOCK_OUTPUT, "warning")
+    GPIO.output(LOCK_HIGH, GPIO.HIGH) # 4 pi
+    GPIO.output(LOCK_LOW, GPIO.LOW) # 4 pi
+    colors.print_color("Turned motor on @ lock_high %d high" % LOCK_HIGH, "warning")
     time.sleep(25)
-    GPIO.output(LOCK_OUTPUT, GPIO.LOW)
-    colors.print_color("Turned motor off @ lock_output %d low" % LOCK_OUTPUT, "warning")
+    GPIO.output(LOCK_HIGH, GPIO.LOW)
+    colors.print_color("Turned motor off @ lock_high %d low" % LOCK_HIGH, "warning")
 
     # switch polarity
-    temp = LOCK_OUTPUT
-    LOCK_OUTPUT = LOCK_INPUT
-    LOCK_INPUT = temp
-    colors.print_color("Switched polarity: lock_output %d lock_input %d" % (LOCK_OUTPUT, LOCK_INPUT), "warning")
+    temp = LOCK_HIGH
+    LOCK_HIGH = LOCK_LOW
+    LOCK_LOW = temp
+    colors.print_color("Switched polarity: lock_high %d lock_low %d" % (LOCK_HIGH, LOCK_LOW), "warning")
 
     setup()
 
