@@ -79,7 +79,7 @@ def get_remote_unlock_events():
         else:
             if num_found > num_of_remote_unlock_events:
                 # A remote unlock signal has been sent. Unlock the door.
-                colors.print_color("[REMOTE] Door remotely unlocked.", "warning")
+                colors.print_color("[REMOTE] Door remotely unlocked. num_found %d num remote %d" % (num_found, num_of_remote_unlock_events), "warning")
                 gpio.UnlockDoor()
                 num_of_remote_unlock_events = num_found
                 
