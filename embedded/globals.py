@@ -5,6 +5,7 @@ from twilio.rest import Client as TwilioRestClient
 import threading
 import GPIO as gpio
 import colors
+import time
 
 # Create lock to protect threads
 lock = threading.Lock()
@@ -15,6 +16,8 @@ reader = None
 db = None
 authorized_personnel = []
 all_personnel = []
+
+last_message_sent_at = time.time() - 60
 
 # B. open connection to database
 load_dotenv()

@@ -117,7 +117,9 @@ def execute(instruction: str, execution_context: str):
 
     # assumes the door cannot lock when the door is open
     if gpio.IsDoorLocked() and gpio.IsDoorOpen():
-        helpers.SendWarningMessage()
+        if time.time() > gb.last_message_sent_at + 30:
+            helpers.SendWarningMessage()
+            gb.last_message_send_at = time.time()
 
     if instruction == INSTRUCTIONS.reset_values:
         try:

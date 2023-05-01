@@ -67,7 +67,7 @@ def LockDoor():
     GPIO.output(LOCK_HIGH, GPIO.HIGH) # 4 pi
     GPIO.output(LOCK_LOW, GPIO.LOW) # 4 pi
     colors.print_color("[DOOR LOCKING] Turned motor on @ lock_high %d high & lock_low %d" % (LOCK_HIGH, LOCK_LOW), "warning")
-    time.sleep(25)
+    time.sleep(45)
     GPIO.output(LOCK_HIGH, GPIO.LOW) # 4 pi
     colors.print_color("[DOOR LOCKING FINISHED] Turned motor on @ lock_high %d low" % LOCK_HIGH, "warning")
 
@@ -95,7 +95,7 @@ def UnlockDoor():
     GPIO.output(LOCK_HIGH, GPIO.HIGH) # 4 pi
     GPIO.output(LOCK_LOW, GPIO.LOW) # 4 pi
     colors.print_color("[DOOR UNLOCKING] Turned motor on @ lock_high %d high" % LOCK_HIGH, "warning")
-    time.sleep(25)
+    time.sleep(45)
     GPIO.output(LOCK_HIGH, GPIO.LOW)
     colors.print_color("[DOOR UNLOCKING FINISHED] Turned motor off @ lock_high %d low" % LOCK_HIGH, "warning")
 
