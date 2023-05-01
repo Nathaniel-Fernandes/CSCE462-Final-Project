@@ -11,8 +11,8 @@ who_unlocked_the_door = ''
 time_of_last_unlock = time.time() - 60 # starts @ 1 min ago to lock instantly
 
 # define pins
-LOCK_HIGH = 36
-LOCK_LOW = 16
+LOCK_HIGH = 16
+LOCK_LOW = 36
 DOOR_CIRCUIT = 15
 
 def setup():
