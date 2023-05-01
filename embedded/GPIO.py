@@ -55,6 +55,9 @@ def ClosePins():
     # pass # 4 windows
     
 def LockDoor():
+    global LOCK_OUTPUT
+    global LOCK_INPUT
+
     if IsDoorLocked():
         return
     
@@ -72,6 +75,9 @@ def LockDoor():
     colors.print_color("[LOCKED] Drawer locked successfully.", "success")
 
 def UnlockDoor():
+    global LOCK_OUTPUT
+    global LOCK_INPUT
+    
     if IsDoorUnlocked():
         return
     
