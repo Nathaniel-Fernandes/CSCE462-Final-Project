@@ -20,6 +20,9 @@ def setup():
     GPIO.setup(LOCK_LOW, GPIO.OUT) # uncomment 4 pi
     GPIO.setup(DOOR_CIRCUIT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # uncomment 4 pi
 
+    GPIO.output(LOCK_HIGH, GPIO.LOW) # 4 pi
+    GPIO.output(LOCK_LOW, GPIO.LOW) # 4 pi
+
 setup()
 
 # GETTERS
