@@ -13,6 +13,7 @@ def main():
 
     # begin Finite State Machine
     try:
+        gpio.setup()
         FSM.FSM(FSM.STATES.reset)
 
     except BaseException as e:
