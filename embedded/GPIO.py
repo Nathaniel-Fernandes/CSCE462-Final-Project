@@ -66,10 +66,10 @@ def LockDoor():
     
     GPIO.output(LOCK_HIGH, GPIO.HIGH) # 4 pi
     GPIO.output(LOCK_LOW, GPIO.LOW) # 4 pi
-    colors.print_color("Turned motor on @ lock_high %d high & lock_low %d" % (LOCK_HIGH, LOCK_LOW), "warning")
+    colors.print_color("[DOOR LOCKING] Turned motor on @ lock_high %d high & lock_low %d" % (LOCK_HIGH, LOCK_LOW), "warning")
     time.sleep(25)
     GPIO.output(LOCK_HIGH, GPIO.LOW) # 4 pi
-    colors.print_color("Turned motor on @ lock_high %d low" % LOCK_HIGH, "warning")
+    colors.print_color("[DOOR LOCKING FINISHED] Turned motor on @ lock_high %d low" % LOCK_HIGH, "warning")
 
 
     # switch polarity
@@ -94,10 +94,10 @@ def UnlockDoor():
 
     GPIO.output(LOCK_HIGH, GPIO.HIGH) # 4 pi
     GPIO.output(LOCK_LOW, GPIO.LOW) # 4 pi
-    colors.print_color("Turned motor on @ lock_high %d high" % LOCK_HIGH, "warning")
+    colors.print_color("[DOOR UNLOCKING] Turned motor on @ lock_high %d high" % LOCK_HIGH, "warning")
     time.sleep(25)
     GPIO.output(LOCK_HIGH, GPIO.LOW)
-    colors.print_color("Turned motor off @ lock_high %d low" % LOCK_HIGH, "warning")
+    colors.print_color("[DOOR UNLOCKING FINISHED] Turned motor off @ lock_high %d low" % LOCK_HIGH, "warning")
 
     # switch polarity
     temp = LOCK_HIGH
@@ -142,17 +142,17 @@ def WaitForDoorToClose():
     
         return True
 
-thread = None
-def LockDoorEvery60Sec():
-    global thread
+# thread = None
+# def LockDoorEvery60Sec():
+#     global thread
 
-    colors.print_color("[LOCKED] Security Measure - Attempting to lock drawer every 60 seconds.", "warning")
-    if IsDoorClosed() and time.time() > 60 + time_of_last_unlock:
-        LockDoor()
+#     colors.print_color("[LOCKED] Security Measure - Attempting to lock drawer every 60 seconds.", "warning")
+#     if IsDoorClosed() and time.time() > 60 + time_of_last_unlock:
+#         LockDoor()
 
-    if thread != None:
-        thread.cancel()
+#     if thread != None:
+#         thread.cancel()
 
-    thread = threading.Timer(60.0, LockDoorEvery60Sec).start()
+#     thread = threading.Timer(60.0, LockDoorEvery60Sec).start()
     
 # LockDoorEvery60Sec()
