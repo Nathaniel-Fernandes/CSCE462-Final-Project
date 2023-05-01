@@ -73,7 +73,7 @@ def get_remote_unlock_events():
     num_found = len(res.data)
     
     with lock:
-        if num_of_remote_unlock_events == None:
+        if num_of_remote_unlock_events == None or num_of_remote_unlock_events == 0:
             num_of_remote_unlock_events = num_found 
             
         else:
