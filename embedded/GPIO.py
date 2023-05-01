@@ -62,13 +62,17 @@ def LockDoor():
         return
     
     GPIO.output(LOCK_OUTPUT, GPIO.HIGH) # 4 pi
+    colors.print_color("Turned motor on @ lock_output %d high" % LOCK_OUTPUT, "warning")
     time.sleep(25)
     GPIO.output(LOCK_OUTPUT, GPIO.LOW) # 4 pi
+    colors.print_color("Turned motor on @ lock_output %d low" % LOCK_OUTPUT, "warning")
+
 
     # switch polarity
     temp = LOCK_OUTPUT
     LOCK_OUTPUT = LOCK_INPUT
     LOCK_INPUT = temp
+    colors.print_color("Switched polarity: lock_output %d lock_input %d" % (LOCK_OUTPUT, LOCK_INPUT), "warning")
 
     setup()
 
@@ -77,7 +81,7 @@ def LockDoor():
 def UnlockDoor():
     global LOCK_OUTPUT
     global LOCK_INPUT
-    
+
     if IsDoorUnlocked():
         return
     
@@ -85,13 +89,16 @@ def UnlockDoor():
     time_of_last_unlock = time.time()
 
     GPIO.output(LOCK_OUTPUT, GPIO.HIGH) # 4 pi
+    colors.print_color("Turned motor on @ lock_output %d high" % LOCK_OUTPUT, "warning")
     time.sleep(25)
     GPIO.output(LOCK_OUTPUT, GPIO.LOW)
+    colors.print_color("Turned motor off @ lock_output %d low" % LOCK_OUTPUT, "warning")
 
     # switch polarity
     temp = LOCK_OUTPUT
     LOCK_OUTPUT = LOCK_INPUT
     LOCK_INPUT = temp
+    colors.print_color("Switched polarity: lock_output %d lock_input %d" % (LOCK_OUTPUT, LOCK_INPUT), "warning")
 
     setup()
 
