@@ -1,9 +1,14 @@
-import lib.j421xlib as j421xlib
+# built-in
 import binascii
 import json
 import time
 import signal
 from typing import Tuple
+
+# external lib
+import lib.j421xlib as j421xlib
+
+# custom
 import globals as gb
 import colors
 
@@ -62,7 +67,7 @@ def RunScan(runtimes=0, updateDB=False) -> Tuple[int, list]:
 
     if len(tags) <= 0:
         colors.print_color("[WARNING] Found no tags. Running again in 2 seconds.", "warning")
-        time.sleep(1)
+        time.sleep(2)
         RunScan(runtimes+1)
 
     elif updateDB:

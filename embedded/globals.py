@@ -6,6 +6,9 @@ import threading
 import GPIO as gpio
 import colors
 
+# Create lock to protect threads
+lock = threading.Lock()
+
 # A. one instance, used everywhere
 cabinet_id = -1
 reader = None
@@ -42,18 +45,19 @@ def get_authorized_personnel():
     global authorized_personnel
     global thread1    
 
-    # res = db.table('cabinets').select('authorized_personnel').eq('cabinet_id', cabinet_id).neq('authorized_personnel', None).execute()
     res = db.table('Permissions').select('personnel_uuid').eq('cabinet_id', cabinet_id).neq('personnel_uuid', None).execute()
-    fetched_authorized_personnel = list(map(lambda d: d['personnel_uuid'], res.data))
-    
-    if set(authorized_personnel) != set(fetched_authorized_personnel):
-        authorized_personnel = fetched_authorized_personnel
-        print("[AUSER] Personnel authorized to open Cabinet %u have IDs: " % cabinet_id, authorized_personnel)    
- 
-    if thread1 != None:
-        thread1.cancel()
+
+    with lock:
+        fetched_authorized_personnel = list(map(lambda d: d['personnel_uuid'], res.data))
         
-    thread1 = threading.Timer(10.0, get_authorized_personnel).start()
+        if set(authorized_personnel) != set(fetched_authorized_personnel):
+            authorized_personnel = fetched_authorized_personnel
+            print("[AUSER] Personnel authorized to open Cabinet %s have IDs: " % cabinet_id, authorized_personnel)    
+    
+        if thread1 != None:
+            thread1.cancel()
+            
+        thread1 = threading.Timer(10.0, get_authorized_personnel).start()
     
 get_authorized_personnel() 
 
@@ -68,19 +72,20 @@ def get_remote_unlock_events():
        
     num_found = len(res.data)
     
-    if num_of_remote_unlock_events == None:
-        num_of_remote_unlock_events = num_found 
-        
-    else:
-        if num_found > num_of_remote_unlock_events:
-            # A remote unlock signal has been sent. Unlock the door.
-            colors.print_color("[REMOTE] Door remotely unlocked.", "warning")
-            gpio.UnlockDoor()
-            num_of_remote_unlock_events = num_found
+    with lock:
+        if num_of_remote_unlock_events == None:
+            num_of_remote_unlock_events = num_found 
             
-    if thread2 != None:
-        thread2.cancel()
-        
-    thread2 = threading.Timer(10.0, get_remote_unlock_events).start()
-
+        else:
+            if num_found > num_of_remote_unlock_events:
+                # A remote unlock signal has been sent. Unlock the door.
+                colors.print_color("[REMOTE] Door remotely unlocked.", "warning")
+                gpio.UnlockDoor()
+                num_of_remote_unlock_events = num_found
+                
+        if thread2 != None:
+            thread2.cancel()
+            
+        thread2 = threading.Timer(10.0, get_remote_unlock_events).start()
+    
 get_remote_unlock_events()
