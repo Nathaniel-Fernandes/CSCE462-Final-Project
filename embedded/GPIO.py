@@ -63,7 +63,7 @@ def LockDoor():
     
     GPIO.output(LOCK_HIGH, GPIO.HIGH) # 4 pi
     GPIO.output(LOCK_LOW, GPIO.LOW) # 4 pi
-    colors.print_color("Turned motor on @ lock_high %d high" % LOCK_HIGH, "warning")
+    colors.print_color("Turned motor on @ lock_high %d high & lock_low %d" % (LOCK_HIGH, LOCK_LOW), "warning")
     time.sleep(25)
     GPIO.output(LOCK_HIGH, GPIO.LOW) # 4 pi
     colors.print_color("Turned motor on @ lock_high %d low" % LOCK_HIGH, "warning")
