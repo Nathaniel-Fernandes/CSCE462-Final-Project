@@ -137,5 +137,4 @@ def LockDoorEvery60Sec():
 
     thread = threading.Timer(60.0, LockDoorEvery60Sec).start()
     
-
-LockDoorEvery60Sec()
+# LockDoorEvery60Sec()
