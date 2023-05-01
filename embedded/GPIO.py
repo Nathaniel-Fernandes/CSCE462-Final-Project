@@ -20,6 +20,8 @@ def setup():
     GPIO.setup(LOCK_INPUT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # uncomment 4 pi
     GPIO.setup(DOOR_CIRCUIT, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # uncomment 4 pi
 
+setup()
+
 # GETTERS
 def IsDoorUnlocked() -> bool:
     '''
